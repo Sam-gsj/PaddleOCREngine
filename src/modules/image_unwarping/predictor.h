@@ -21,11 +21,14 @@
 #include "src/common/processors.h"
 
 struct WarpPredictorParams {
-  std::string device = "cpu";
+  absl::optional<std::string> model_name = absl::nullopt;
+  absl::optional<std::string> model_dir = absl::nullopt;
+  absl::optional<std::string> device = absl::nullopt;
+  bool enable_mkldnn = true;
   std::string precision = "fp32";
-  bool enable_mkldnn = false;
+  int mkldnn_cache_capacity = 10;
+  int cpu_threads = 8;
   int batch_size = 1;
-  std::unordered_map<std::string, std::string> config = {};
 };
 
 struct WarpPredictorResult {
@@ -36,15 +39,9 @@ struct WarpPredictorResult {
 
 class WarpPredictor : public BasePredictor {
  public:
-  explicit WarpPredictor(
-      const std::string& model_dir, const std::string& device = "cpu",
-      const std::string& precision = "fp32", const bool enable_mkldnn = false,
-      int batch_size = 1,
-      const std::unordered_map<std::string, std::string>& config = {});
-  explicit WarpPredictor(const std::string& model_dir,
-                         const WarpPredictorParams& params);
+  explicit WarpPredictor(const WarpPredictorParams& params);
 
-  void Build();
+  absl::Status Build();
 
   std::vector<std::unique_ptr<BaseCVResult>> Process(
       std::vector<cv::Mat>& batch_data) override;

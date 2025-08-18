@@ -27,7 +27,7 @@
 
 class BasePipeline {
  public:
-  BasePipeline(const std::string& model_dir) : model_dir_(model_dir){};
+  BasePipeline() = default;
   virtual ~BasePipeline() = default;
 
   std::vector<std::unique_ptr<BaseCVResult>> Predict(const std::string& input) {
@@ -43,9 +43,6 @@ class BasePipeline {
 
   template <typename T, typename... Args>
   std::unique_ptr<BasePipeline> CreatePipeline(Args&&... args);
-
- protected:
-  std::string model_dir_;
 };
 
 template <typename T, typename... Args>

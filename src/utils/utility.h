@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <opencv2/opencv.hpp>
@@ -23,7 +24,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -39,6 +39,30 @@ static const char PATH_SEPARATOR = '/';
 
 class Utility {
  public:
+  struct PaddleXConfigVariant {
+    enum class Type { NONE, STR, MAP };
+    Type type;
+    std::string str_val;
+    std::unordered_map<std::string, std::string> map_val;
+    PaddleXConfigVariant() : type(Type::NONE) {}
+    PaddleXConfigVariant(const std::string& val)
+        : type(Type::STR), str_val(val) {}
+    PaddleXConfigVariant(const char* val)
+        : type(Type::STR), str_val(val ? val : "") {}
+    PaddleXConfigVariant(
+        const std::unordered_map<std::string, std::string>& val)
+        : type(Type::MAP), map_val(val) {}
+    bool IsStr() const { return type == Type::STR; }
+    bool IsMap() const { return type == Type::MAP; }
+    const std::string& GetStr() const {
+      assert(IsStr());
+      return str_val;
+    }
+    const std::unordered_map<std::string, std::string>& GetMap() const {
+      assert(IsMap());
+      return map_val;
+    }
+  };
   static constexpr const char* MODEL_FILE_PREFIX = "inference";
   static const std::set<std::string> kImgSuffixes;
 
@@ -61,10 +85,6 @@ class Utility {
   // TODO windows
   static std::string GetCpuVendor();
 
-  static void WriteBatchMatToTxt(const cv::Mat& batch,
-                                 const std::string& filename);
-  static void WriteBatchMatToTxt_X(const cv::Mat& mat,
-                                   const std::string& filename);
   static void PrintShape(const cv::Mat& img);
 
   static absl::Status MyCreateDirectory(const std::string& path);
@@ -91,6 +111,8 @@ class Utility {
       const std::string& suffix = "_res");
 
   static absl::StatusOr<int> StringToInt(std::string s);
+  static bool StringToBool(const std::string& str);
+  static std::string VecToString(const std::vector<int>& input);
 
   static absl::StatusOr<std::tuple<std::string, std::string, std::string>>
   GetOcrModelInfo(std::string lang, std::string ppocr_version);

@@ -60,10 +60,12 @@ void DocPreprocessorResult::SaveToImg(const std::string& save_path) {
       save_path, pipeline_result_.input_path);
   if (!full_path.ok()) {
     INFOE(full_path.status().ToString().c_str());
+    exit(-1);
   }
   bool success = cv::imwrite(full_path.value(), img_show);
   if (!success) {
     INFOE("Error: Failed to write the image : %s", full_path.value().c_str());
+    exit(-1);
   }
 }
 
@@ -101,6 +103,7 @@ void DocPreprocessorResult::SaveToJson(const std::string& save_path) const {
       save_path, pipeline_result_.input_path);
   if (!full_path.ok()) {
     INFOE(full_path.status().ToString().c_str());
+    exit(-1);
   }
   std::ofstream file(full_path.value());
   if (file.is_open()) {
@@ -108,6 +111,7 @@ void DocPreprocessorResult::SaveToJson(const std::string& save_path) const {
     file.close();
   } else {
     INFOE("Could not open file for writing : %s", save_path.c_str());
+    exit(-1);
   }
 }
 
@@ -123,27 +127,3 @@ void DocPreprocessorResult::DrawText(cv::Mat& img, const std::string& text,
   putText(img, text, cv::Point(x + 10, y + textSize.height + 2), fontFace,
           fontScale, cv::Scalar(0, 0, 0), thickness, cv::LINE_AA);
 }
-
-// int DocPreprocessorResult::getAdaptiveFontScale(const std::string& text, int
-// imgWidth, int maxWidth, int minFont, int maxFont, int thickness, int&
-// outBaseline, int& outFontFace) {
-//     int fontFace = cv::FONT_HERSHEY_SIMPLEX;
-//     double fontScale = 1.0;
-//     int baseline = 0;
-//     int bestFontSize = minFont;
-
-//     for (int fontSize = maxFont; fontSize >= minFont; --fontSize) {
-//         fontScale = fontSize / 20.0; // 20为基准比例，可调
-//         int base;
-//         cv::Size textSize = cv::getTextSize(text, fontFace, fontScale,
-//         thickness, &base); if (textSize.width <= maxWidth) {
-//             bestFontSize = fontSize;
-//             outBaseline = base;
-//             outFontFace = fontFace;
-//             return fontScale;
-//         }
-//     }
-//     outBaseline = 0;
-//     outFontFace = fontFace;
-//     return minFont / 20.0;
-// }

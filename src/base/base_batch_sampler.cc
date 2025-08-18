@@ -64,7 +64,7 @@ BaseBatchSampler::SampleFromVectorToStringVector(
         current_batch.clear();
       }
     } else {
-      INFOE("Unsupported file type: %s", input.c_str());
+      return absl::InvalidArgumentError("Unsupported file type: " + input);
     }
   }
 

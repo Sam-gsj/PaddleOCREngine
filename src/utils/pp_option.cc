@@ -93,6 +93,16 @@ absl::Status PaddlePredictorOption::SetCpuThreads(int cpu_threads) {
   return absl::OkStatus();
 }
 
+absl::Status PaddlePredictorOption::SetMkldnnCacheCapacity(
+    int mkldnn_cache_capacity) {
+  if (mkldnn_cache_capacity < 1) {
+    throw std::invalid_argument(
+        "SetMkldnnCacheCapacity failed! mkldnn_cache_capacity must be >= 1");
+  }
+  mkldnn_cache_capacity_ = mkldnn_cache_capacity;
+  return absl::OkStatus();
+}
+
 void PaddlePredictorOption::SetDeletePass(
     const std::vector<std::string> &delete_pass) {
   delete_pass_ = delete_pass;
@@ -104,14 +114,6 @@ void PaddlePredictorOption::SetEnableNewIR(bool enable_new_ir) {
 
 void PaddlePredictorOption::SetEnableCinn(bool enable_cinn) {
   enable_cinn_ = enable_cinn;
-}
-
-absl::Status PaddlePredictorOption::SetMkldnnCacheCapacity(int capacity) {
-  if (capacity < 1) {
-    throw std::invalid_argument("mkldnn_cache_capacity must be >= 1");
-  }
-  mkldnn_cache_capacity_ = capacity;
-  return absl::OkStatus();
 }
 
 std::string PaddlePredictorOption::DebugString() const {

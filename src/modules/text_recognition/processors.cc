@@ -75,7 +75,6 @@ absl::StatusOr<cv::Mat> OCRReisizeNormImg::StaticResize(cv::Mat& image) const {
   cv::hconcat(mat_split, resize_image_process);
   std::vector<int> resize_shape = {img_c, img_h, img_w};
   resize_image_process = resize_image_process.reshape(1, resize_shape);
-  Utility::WriteBatchMatToTxt_X(resize_image_process, "static_resize.txt");
   return resize_image_process;
 }
 

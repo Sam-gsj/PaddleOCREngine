@@ -42,6 +42,7 @@ void DocTrResult::SaveToImg(const std::string& save_path) {
   bool success = cv::imwrite(full_path.value(), predictor_result_.doctr_img);
   if (!success) {
     INFOE("Failed to write the image %s", full_path.value().c_str());
+    exit(-1);
   }
 }
 
@@ -79,6 +80,7 @@ void DocTrResult::SaveToJson(const std::string& save_path) const {
 
   if (!full_path.ok()) {
     INFOE(full_path.status().ToString().c_str());
+    exit(-1);
   }
   std::ofstream file(full_path.value());
   if (file.is_open()) {
@@ -86,6 +88,7 @@ void DocTrResult::SaveToJson(const std::string& save_path) const {
     file.close();
   } else {
     INFOE("Could not open file for writing: %s", save_path.c_str());
+    exit(-1);
   }
 }
 

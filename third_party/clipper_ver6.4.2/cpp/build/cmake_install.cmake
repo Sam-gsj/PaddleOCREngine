@@ -1,4 +1,4 @@
-# Install script for directory: /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp
+# Install script for directory: /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -51,7 +51,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/usr/local/include/polyclipping" TYPE FILE FILES "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.hpp")
+file(INSTALL DESTINATION "/usr/local/include/polyclipping" TYPE FILE FILES "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.hpp")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -75,8 +75,8 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
 file(INSTALL DESTINATION "/usr/local/lib" TYPE SHARED_LIBRARY FILES
-    "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/libpolyclipping.so.22.0.0"
-    "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/libpolyclipping.so.22"
+    "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/libpolyclipping.so.22.0.0"
+    "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/libpolyclipping.so.22"
     )
   foreach(file
       "$ENV{DESTDIR}/usr/local/lib/libpolyclipping.so.22.0.0"
@@ -106,7 +106,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/usr/local/lib" TYPE SHARED_LIBRARY FILES "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/libpolyclipping.so")
+file(INSTALL DESTINATION "/usr/local/lib" TYPE SHARED_LIBRARY FILES "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/libpolyclipping.so")
   if(EXISTS "$ENV{DESTDIR}/usr/local/lib/libpolyclipping.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}/usr/local/lib/libpolyclipping.so")
     if(CMAKE_INSTALL_DO_STRIP)
@@ -124,7 +124,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/usr/local/share/pkgconfig" TYPE FILE FILES "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/polyclipping.pc")
+file(INSTALL DESTINATION "/usr/local/share/pkgconfig" TYPE FILE FILES "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/polyclipping.pc")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -135,5 +135,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -Dpolyclipping_EXPORTS
 
-CXX_INCLUDES = 
+CXX_INCLUDES = -I/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build
 
 CXX_FLAGS = -fPIC
 

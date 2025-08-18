@@ -21,36 +21,36 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "polyclipping/clipper.hpp"
 #include "src/utils/func_register.h"
 
 struct DetResizeForTestParam {
-  int limit_side_len = -1;
-  std::string limit_type = std::string("");
-  int max_side_limit = -1;
-  std::vector<int> input_shape = {};
-  std::vector<int> image_shape = {};
+  absl::optional<std::vector<int>> input_shape = absl::nullopt;
+  absl::optional<int> max_side_limit = absl::nullopt;
+  absl::optional<std::vector<int>> image_shape = absl::nullopt;
+  absl::optional<bool> keep_ratio = absl::nullopt;
+  absl::optional<int> limit_side_len = absl::nullopt;
+  absl::optional<std::string> limit_type = absl::nullopt;
+  absl::optional<int> resize_long = absl::nullopt;
 };
 
 class DetResizeForTest : public BaseProcessor {
  public:
-  DetResizeForTest(int resize_long = -1, std::vector<int> input_shape = {},
-                   std::vector<int> image_shape = {}, int limit_side_len = 960,
-                   std::string limit_type = "max", int max_side_limit = 4000);
-
+  DetResizeForTest(const DetResizeForTestParam& params);
   absl::StatusOr<std::vector<cv::Mat>> Apply(
       std::vector<cv::Mat>& input,
       const void* param_ptr = nullptr) const override;
 
  private:
-  int resize_type_;
-  bool keep_ratio_;
+  int resize_type_ = 0;
+  bool keep_ratio_ = false;
   int resize_long_;
   std::vector<int> input_shape_;
   std::vector<int> image_shape_;
   int limit_side_len_;
   std::string limit_type_;
-  int max_side_limit_;
+  int max_side_limit_ = 4000;
 
   absl::StatusOr<cv::Mat> Resize(const cv::Mat& img, int limit_side_len,
                                  const std::string& limit_type,
@@ -68,13 +68,19 @@ class DetResizeForTest : public BaseProcessor {
   static constexpr int INPUTSHAPE = 3;
 };
 
+struct DBPostProcessParams {
+  absl::optional<float> thresh = absl::nullopt;
+  absl::optional<float> box_thresh = absl::nullopt;
+  absl::optional<float> unclip_ratio = absl::nullopt;
+  int max_candidates = 1000;
+  bool use_dilation = false;
+  std::string score_mode = "fast";
+  std::string box_type = "quad";
+};
+
 class DBPostProcess {
  public:
-  DBPostProcess(float thresh = 0.3f, float box_thresh = 0.7f,
-                int max_candidates = 1000, float unclip_ratio = 2.0f,
-                bool use_dilation = false,
-                const std::string& score_mode = "fast",
-                const std::string& box_type = "quad");
+  DBPostProcess(const DBPostProcessParams& params);
 
   absl::StatusOr<
       std::pair<std::vector<std::vector<cv::Point2f>>, std::vector<float>>>

@@ -62,10 +62,10 @@ RM = /home/cmake-3.18.0-Linux-x86_64/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp
+CMAKE_SOURCE_DIR = /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build
+CMAKE_BINARY_DIR = /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/polyclipping.dir/depend.make
@@ -78,16 +78,16 @@ include CMakeFiles/polyclipping.dir/flags.make
 
 CMakeFiles/polyclipping.dir/clipper.cpp.o: CMakeFiles/polyclipping.dir/flags.make
 CMakeFiles/polyclipping.dir/clipper.cpp.o: ../clipper.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/polyclipping.dir/clipper.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/polyclipping.dir/clipper.cpp.o -c /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/polyclipping.dir/clipper.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/polyclipping.dir/clipper.cpp.o -c /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.cpp
 
 CMakeFiles/polyclipping.dir/clipper.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/polyclipping.dir/clipper.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.cpp > CMakeFiles/polyclipping.dir/clipper.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.cpp > CMakeFiles/polyclipping.dir/clipper.cpp.i
 
 CMakeFiles/polyclipping.dir/clipper.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/polyclipping.dir/clipper.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.cpp -o CMakeFiles/polyclipping.dir/clipper.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.cpp -o CMakeFiles/polyclipping.dir/clipper.cpp.s
 
 # Object files for target polyclipping
 polyclipping_OBJECTS = \
@@ -99,7 +99,7 @@ polyclipping_EXTERNAL_OBJECTS =
 libpolyclipping.so.22.0.0: CMakeFiles/polyclipping.dir/clipper.cpp.o
 libpolyclipping.so.22.0.0: CMakeFiles/polyclipping.dir/build.make
 libpolyclipping.so.22.0.0: CMakeFiles/polyclipping.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX shared library libpolyclipping.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX shared library libpolyclipping.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/polyclipping.dir/link.txt --verbose=$(VERBOSE)
 	$(CMAKE_COMMAND) -E cmake_symlink_library libpolyclipping.so.22.0.0 libpolyclipping.so.22 libpolyclipping.so
 
@@ -119,6 +119,6 @@ CMakeFiles/polyclipping.dir/clean:
 .PHONY : CMakeFiles/polyclipping.dir/clean
 
 CMakeFiles/polyclipping.dir/depend:
-	cd /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build /workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/build/CMakeFiles/polyclipping.dir/DependInfo.cmake --color=$(COLOR)
+	cd /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build /workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/build/CMakeFiles/polyclipping.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/polyclipping.dir/depend
 

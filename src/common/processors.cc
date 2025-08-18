@@ -70,6 +70,7 @@ Resize::Resize(const std::vector<int>& target_size, bool keep_ratio,
   absl::Status status = CheckImageSize();
   if (!status.ok()) {
     INFOE("image check fail : %s", status.ToString().c_str());
+    exit(-1);
   }
   std::string interp_upper = interp;
   std::transform(interp_upper.begin(), interp_upper.end(), interp_upper.begin(),
@@ -78,6 +79,7 @@ Resize::Resize(const std::vector<int>& target_size, bool keep_ratio,
   auto interp_value = GetInterp(interp_upper);
   if (!interp_value.ok()) {
     INFOE("Unknow type: %s", interp_value.status().ToString().c_str());
+    exit(-1);
   }
   interp_ = interp_value.value();
 }
@@ -131,6 +133,7 @@ ResizeByShort::ResizeByShort(int target_short_edge, int size_divisor,
   auto interp_value = Resize::GetInterp(interp_upper);
   if (!interp_value.ok()) {
     INFOE("Unknow type: %s", interp_value.status().ToString().c_str());
+    exit(-1);
   }
   interp_ = interp_value.value();
 }
@@ -172,6 +175,7 @@ ReadImage::ReadImage(const std::string& format) {
   auto fmt = StringToFormat(format);
   if (!fmt.ok()) {
     INFOE(fmt.status().ToString().c_str());
+    exit(-1);
   }
   format_ = *fmt;
 }
@@ -720,7 +724,6 @@ std::vector<cv::Point2f> CropByPolys::GetMinAreaRectPoints(
   cv::RotatedRect minRect = cv::minAreaRect(pts);
   std::vector<cv::Point2f> box(4);
   minRect.points(box.data());
-  // 排序顺序和python版一致
   std::sort(box.begin(), box.end(),
             [](const cv::Point2f& a, const cv::Point2f& b) {
               return a.x < b.x || (a.x == b.x && a.y < b.y);

@@ -20,7 +20,11 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-
+#ifdef WITH_GPU
+static constexpr const char* DEVICE = "gpu:0";
+#else
+static constexpr const char* DEVICE = "cpu";
+#endif
 class PaddlePredictorOption {
  public:
   const std::vector<std::string> SUPPORT_RUN_MODE = {"paddle", "paddle_fp16",
@@ -44,15 +48,15 @@ class PaddlePredictorOption {
   absl::Status SetDeviceType(const std::string& device_type);
   absl::Status SetDeviceId(int device_id);
   absl::Status SetCpuThreads(int cpu_threads);
+  absl::Status SetMkldnnCacheCapacity(int mkldnn_cache_capacity);
   void SetDeletePass(const std::vector<std::string>& delete_pass);
   void SetEnableNewIR(bool enable_new_ir);
   void SetEnableCinn(bool enable_cinn);
-  absl::Status SetMkldnnCacheCapacity(int capacity);
 
  private:
   std::string run_mode_ = "paddle";
-  std::string device_type_ = "cpu";
-  int device_id_ = 0;  //*****************
+  std::string device_type_ = DEVICE;
+  int device_id_ = 0;
   int cpu_threads_ = 10;
   std::vector<std::string> delete_pass_ = {};
   bool enable_new_ir_ = true;

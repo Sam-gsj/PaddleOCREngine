@@ -40,7 +40,7 @@ void OCRResult::SaveToImg(const std::string& save_path) {
 
   if (image.empty()) {
     INFOE("Input image is empty.");
-    return;
+    exit(-1);
   }
 
   int h = image.rows;
@@ -106,11 +106,13 @@ void OCRResult::SaveToImg(const std::string& save_path) {
       save_path, pipeline_result_.input_path, "_ocr_res_img");
   if (!ocr_path.ok()) {
     INFOE(ocr_path.status().ToString().c_str());
+    exit(-1);
   }
   auto doc_pre_path = Utility::SmartCreateDirectoryForImage(
       save_path, pipeline_result_.input_path, "_doc_preprocessor_res");
   if (!doc_pre_path.ok()) {
     INFOE(doc_pre_path.status().ToString().c_str());
+    exit(-1);
   }
   cv::imwrite(ocr_path.value(), ocr_res_image);
   if (model_settings["use_doc_preprocessor"]) {
@@ -323,6 +325,7 @@ void OCRResult::SaveToJson(const std::string& save_path) const {
   }
   if (!full_path.ok()) {
     INFOE(full_path.status().ToString().c_str());
+    exit(-1);
   }
   std::ofstream file(full_path.value());
   if (file.is_open()) {
@@ -330,6 +333,7 @@ void OCRResult::SaveToJson(const std::string& save_path) const {
     file.close();
   } else {
     INFOE("Could not open file for writing: %s", save_path.c_str());
+    exit(-1);
   }
 }
 

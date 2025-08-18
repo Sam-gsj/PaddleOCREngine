@@ -104,6 +104,7 @@ if (WITH_GPU)
         if (NOT DEFINED CUDNN_LIB)
             message(FATAL_ERROR "please set CUDNN_LIB with -DCUDNN_LIB=/path/cudnn_v7.4/cuda/lib64")
         endif()
+    add_definitions(-DWITH_GPU)
     endif(NOT WIN32)
 endif()
 
@@ -237,14 +238,16 @@ set(DEPS ${DEPS} ${OpenCV_LIBS})
 set(DEPS ${DEPS} absl::statusor)
 set(DEPS ${DEPS} polyclipping)
 find_package(absl REQUIRED)
-find_package(Iconv REQUIRED)
+if(UNIX)
+  find_package(Iconv REQUIRED) 
+endif()
 set(DEPS ${DEPS} absl::statusor)
 
 file(GLOB_RECURSE SRC_LIST "./src/*.cc")
-set(SRCS test_OCR.cc )
+set(SRCS pipeline_ocr.cc )
 add_executable(${DEMO_NAME} ${SRCS} ${SRC_LIST} )
 target_link_libraries(${DEMO_NAME} ${DEPS} )
-# polyclipping
+
 if (WIN32 AND WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PADDLE_LIB}/third_party/install/mklml/lib/mklml.dll ./mklml.dll

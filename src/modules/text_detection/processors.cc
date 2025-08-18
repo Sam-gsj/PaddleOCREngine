@@ -18,28 +18,30 @@
 
 #include "src/utils/utility.h"
 
-DetResizeForTest::DetResizeForTest(int resize_long,
-                                   std::vector<int> input_shape,
-                                   std::vector<int> image_shape,
-                                   int limit_side_len, std::string limit_type,
-                                   int max_side_limit)
-    : resize_long_(resize_long),
-      input_shape_(input_shape),
-      image_shape_(image_shape),
-      limit_side_len_(limit_side_len),
-      limit_type_(limit_type),
-      max_side_limit_(max_side_limit) {
-  resize_type_ = 0;
-  if (!input_shape_.empty()) {
+DetResizeForTest::DetResizeForTest(const DetResizeForTestParam& params) {
+  if (params.input_shape.has_value()) {
+    input_shape_ = params.input_shape.value();
     resize_type_ = 3;
-  } else if (!image_shape_.empty()) {
+  } else if (params.image_shape.has_value()) {
+    image_shape_ = params.image_shape.value();
     resize_type_ = 1;
-  } else if (limit_side_len_ > 0) {
-    resize_type_ = 0;
-  } else if (resize_long_ > 0) {
+    if (params.keep_ratio.has_value()) {
+      keep_ratio_ = params.keep_ratio.value();
+    }
+  } else if (params.limit_side_len.has_value()) {
+    limit_side_len_ = params.limit_side_len.value();
+    limit_type_ = params.limit_type.value_or("min");
+  } else if (params.resize_long.has_value()) {
     resize_type_ = 2;
+    resize_long_ = params.resize_long.value_or(960);
+  } else {
+    limit_side_len_ = 736;
+    limit_type_ = "min";
   }
-};
+  if (params.max_side_limit.has_value()) {
+    max_side_limit_ = params.max_side_limit.value();
+  }
+}
 
 absl::StatusOr<std::vector<cv::Mat>> DetResizeForTest::Apply(
     std::vector<cv::Mat>& input, const void* param_ptr) const {
@@ -53,9 +55,12 @@ absl::StatusOr<std::vector<cv::Mat>> DetResizeForTest::Apply(
     for (const auto& img : input) {
       auto res = Resize(
           img,
-          param->limit_side_len > 0 ? param->limit_side_len : limit_side_len_,
-          !param->limit_type.empty() ? param->limit_type : limit_type_,
-          param->max_side_limit > 0 ? param->max_side_limit : max_side_limit_);
+          param->limit_side_len.has_value() ? param->limit_side_len.value()
+                                            : limit_side_len_,
+          param->limit_type.has_value() ? param->limit_type.value()
+                                        : limit_type_,
+          param->max_side_limit.has_value() ? param->max_side_limit.value()
+                                            : max_side_limit_);
       if (!res.ok()) return res.status();
       results.push_back(res.value());
     }
@@ -196,20 +201,17 @@ absl::StatusOr<cv::Mat> DetResizeForTest::ResizeImageType3(
   return resized;
 }
 
-DBPostProcess::DBPostProcess(float thresh, float box_thresh, int max_candidates,
-                             float unclip_ratio, bool use_dilation,
-                             const std::string& score_mode,
-                             const std::string& box_type)
-    : thresh_(thresh),
-      box_thresh_(box_thresh),
-      max_candidates_(max_candidates),
-      unclip_ratio_(unclip_ratio),
+DBPostProcess::DBPostProcess(const DBPostProcessParams& params)
+    : thresh_(params.thresh.value_or(0.3)),
+      box_thresh_(params.box_thresh.value_or(0.7)),
+      unclip_ratio_(params.unclip_ratio.value_or(2.0)),
+      max_candidates_(params.max_candidates),
       min_size_(3),
-      use_dilation_(use_dilation),
-      score_mode_(score_mode),
-      box_type_(box_type) {
-  assert(score_mode == "slow" || score_mode == "fast");
-  assert(box_type == "quad" || box_type == "poly");
+      use_dilation_(params.use_dilation),
+      score_mode_(params.score_mode),
+      box_type_(params.box_type) {
+  assert(score_mode_ == "slow" || score_mode_ == "fast");
+  assert(box_type_ == "quad" || box_type_ == "poly");
 }
 
 absl::StatusOr<

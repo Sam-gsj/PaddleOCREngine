@@ -17,26 +17,18 @@
 #include "result.h"
 #include "src/common/image_batch_sampler.h"
 #include "src/utils/ilogger.h"
-ClasPredictor::ClasPredictor(
-    const std::string& model_dir, const std::string& device,
-    const std::string& precision, const bool enable_mkldnn, int batch_size,
-    const std::unordered_map<std::string, std::string>& config,
 
-    const int topk)
-    : BasePredictor(model_dir, device, precision, enable_mkldnn, batch_size,
-                    config, "image"),
-      topk_(topk) {
-  Build();
-};
-
-ClasPredictor::ClasPredictor(const std::string& model_dir,
-                             const ClasPredictorParams& params)
-    : BasePredictor(model_dir, params.device, params.precision,
-                    params.enable_mkldnn, params.batch_size, params.config,
-                    "image"),
-      params_(params),
-      topk_(params.topk) {
-  Build();
+ClasPredictor::ClasPredictor(const ClasPredictorParams& params)
+    : BasePredictor(params.model_dir, params.model_name, params.device,
+                    params.precision, params.enable_mkldnn,
+                    params.mkldnn_cache_capacity, params.cpu_threads,
+                    params.batch_size, "image"),
+      params_(params) {
+  auto status = Build();
+  if (!status.ok()) {
+    INFOE("Build fail: %s", status.ToString().c_str());
+    exit(-1);
+  }
 };
 
 absl::Status ClasPredictor::BuildResize() {
@@ -54,13 +46,13 @@ absl::Status ClasPredictor::BuildResize() {
   return absl::OkStatus();
 }
 
-void ClasPredictor::Build() {
+absl::Status ClasPredictor::Build() {
   const auto& pre_params = config_.PreProcessOpInfo();
   Register<ReadImage>("Read");
 
   auto status = BuildResize();
   if (!status.ok()) {
-    INFOE("build resize_op fail: %s", status.ToString().c_str());
+    return absl::InternalError("build resize_op fail: " + status.ToString());
   }
   if (config_.FindKey("Crop").ok()) {
     Register<Crop>("Crop",
@@ -85,6 +77,7 @@ void ClasPredictor::Build() {
                    post_params.at("PostProcess.Topk.label_list"))
                    .vec_string,
                std::stoi(post_params.at("PostProcess.Topk.topk"))));
+  return absl::OkStatus();
 };
 
 std::vector<std::unique_ptr<BaseCVResult>> ClasPredictor::Process(
@@ -98,42 +91,50 @@ std::vector<std::unique_ptr<BaseCVResult>> ClasPredictor::Process(
 
   if (!batch_read.ok()) {
     INFOE(batch_read.status().ToString().c_str());
+    exit(-1);
   }
 
   auto batch_resize = pre_op_.at("Resize")->Apply(batch_read.value());
   if (!batch_resize.ok()) {
     INFOE(batch_resize.status().ToString().c_str());
+    exit(-1);
   }
   if (config_.FindKey("Crop").ok()) {
     batch_resize = pre_op_.at("Crop")->Apply(batch_resize.value());  // **
     if (!batch_resize.ok()) {
       INFOE(batch_resize.status().ToString().c_str());
+      exit(-1);
     }
   }
   auto batch_normalize = pre_op_.at("Normalize")->Apply(batch_resize.value());
   if (!batch_normalize.ok()) {
     INFOE(batch_normalize.status().ToString().c_str());
+    exit(-1);
   }
 
   auto batch_tochw = pre_op_.at("ToCHW")->Apply(batch_normalize.value());
   if (!batch_tochw.ok()) {
     INFOE(batch_tochw.status().ToString().c_str());
+    exit(-1);
   }
 
   auto batch_tobatch = pre_op_.at("ToBatch")->Apply(batch_tochw.value());
   if (!batch_tobatch.ok()) {
     INFOE(batch_tobatch.status().ToString().c_str());
+    exit(-1);
   }
 
   auto batch_infer = infer_ptr_->Apply(batch_tobatch.value());
   if (!batch_infer.ok()) {
     INFOE(batch_infer.status().ToString().c_str());
+    exit(-1);
   }
 
   auto cls_result = post_op_.at("Topk")->Apply(batch_infer.value()[0]);
 
   if (!cls_result.ok()) {
     INFOE(cls_result.status().ToString().c_str());
+    exit(-1);
   }
 
   std::vector<std::unique_ptr<BaseCVResult>> base_cv_result_ptr_vec = {};

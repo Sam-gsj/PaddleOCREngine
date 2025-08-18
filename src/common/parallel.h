@@ -40,9 +40,7 @@ class AutoParallelSimpleInferencePipeline : public BasePipeline {
   };
 
  public:
-  AutoParallelSimpleInferencePipeline(const std::string& model_dir,
-                                      const PipelineParams& params,
-                                      int thread_num = 1);
+  AutoParallelSimpleInferencePipeline(const PipelineParams& params);
   absl::Status Init();
 
   std::future<PipelineResult> PredictAsync(const PipelineInput& input);
@@ -54,8 +52,6 @@ class AutoParallelSimpleInferencePipeline : public BasePipeline {
 
  private:
   void ProcessInstanceTasks(int instance_id);
-
-  std::string model_dir_;
   PipelineParams params_;
   int thread_num_;
 
@@ -71,16 +67,12 @@ template <typename Pipeline, typename PipelineParams, typename PipelineInput,
           typename PipelineResult>
 AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineInput,
                                     PipelineResult>::
-    AutoParallelSimpleInferencePipeline(const std::string& model_dir,
-                                        const PipelineParams& params,
-                                        int thread_num)
-    : BasePipeline(model_dir),
-      model_dir_(model_dir),
-      params_(params),
-      thread_num_(thread_num) {
+    AutoParallelSimpleInferencePipeline(const PipelineParams& params)
+    : BasePipeline(), params_(params), thread_num_(params.threads) {
   auto status = Init();
   if (!status.ok()) {
     INFOE("Pipeline pool init error : %s", status.ToString().c_str());
+    exit(-1);
   }
 }
 
@@ -97,8 +89,7 @@ absl::Status AutoParallelSimpleInferencePipeline<
           std::unique_ptr<InferenceInstance>(new InferenceInstance());
       instance->instance_id = i;
 
-      instance->pipeline =
-          std::shared_ptr<BasePipeline>(new Pipeline(model_dir_, params_));
+      instance->pipeline = std::shared_ptr<BasePipeline>(new Pipeline(params_));
 
       instances_.push_back(std::move(instance));
     }

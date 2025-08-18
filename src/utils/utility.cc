@@ -110,7 +110,7 @@ absl::StatusOr<std::string> Utility::GetConfigPaths(
   if (FileExists(config_path_find).ok()) {
     config_path = config_path_find;
   } else {
-    INFOE(FileExists(config_path_find).ToString().c_str());
+    return FileExists(config_path_find);
   }
   return config_path;
 };
@@ -128,97 +128,6 @@ std::string Utility::GetCpuVendor() {
   }
   return "";
 };
-
-void Utility::WriteBatchMatToTxt(const cv::Mat& batch,
-                                 const std::string& filename) {
-  // 检查维度和类型
-  if (batch.dims != 4 || batch.type() != CV_32F) {
-    INFOE("Input must be 4D CV_32F Mat.");
-    return;
-  }
-
-  const int batch_size = batch.size[0];
-  const int channels = batch.size[1];
-  const int rows = batch.size[2];
-  const int cols = batch.size[3];
-
-  std::ofstream fout(filename);
-  if (!fout.is_open()) {
-    INFOE("Cannot open file for writing: ");
-    return;
-  }
-
-  // 顺序为 NCHW
-  for (int n = 0; n < batch_size; ++n) {
-    for (int c = 0; c < channels; ++c) {
-      for (int h = 0; h < rows; ++h) {
-        // 每一行的首地址
-        const float* row_ptr = batch.ptr<float>(n, c, h);
-        for (int w = 0; w < cols; ++w) {
-          fout << row_ptr[w] << "\n";
-        }
-      }
-    }
-  }
-
-  fout.close();
-  std::cout << "Write done: " << filename << std::endl;
-}
-
-void Utility::WriteBatchMatToTxt_X(const cv::Mat& mat,
-                                   const std::string& filename) {
-  std::ofstream fout(filename);
-  if (!fout.is_open()) {
-    INFOE("Cannot open file for writing: %s ", filename.c_str());
-    return;
-  }
-
-  fout << "Dimensions: " << mat.dims << "\n";
-  for (int i = 0; i < mat.dims; ++i) {
-    fout << "Size[" << i << "]: " << mat.size[i] << "\n";
-  }
-  fout << "Type: " << mat.type() << " (depth=" << mat.depth()
-       << ", channels=" << mat.channels() << ")\n\n";
-
-  int channels = mat.channels();
-  int depth = mat.depth();
-  size_t total_elements = mat.total();  // 元素数（像素点数，不含通道）
-
-  for (size_t i = 0; i < total_elements; ++i) {
-    for (int c = 0; c < channels; ++c) {
-      switch (depth) {
-        case CV_8U:
-          fout << static_cast<int>(mat.ptr<uchar>()[i * channels + c]) << "\n";
-          break;
-        case CV_8S:
-          fout << static_cast<int>(mat.ptr<schar>()[i * channels + c]) << "\n";
-          break;
-        case CV_16U:
-          fout << mat.ptr<ushort>()[i * channels + c] << "\n";
-          break;
-        case CV_16S:
-          fout << mat.ptr<short>()[i * channels + c] << "\n";
-          break;
-        case CV_32S:
-          fout << mat.ptr<int>()[i * channels + c] << "\n";
-          break;
-        case CV_32F:
-          fout << mat.ptr<float>()[i * channels + c] << "\n";
-          break;
-        case CV_64F:
-          fout << mat.ptr<double>()[i * channels + c] << "\n";
-          break;
-        default:
-          INFOE("Unsupported mat depth: %d ", depth);
-          fout.close();
-          return;
-      }
-    }
-  }
-
-  fout.close();
-  std::cout << "Write done: " << filename << std::endl;
-}
 
 void Utility::PrintShape(const cv::Mat& img) {
   for (int i = 0; i < img.dims; i++) {
@@ -290,12 +199,12 @@ absl::StatusOr<std::vector<cv::Mat>> Utility::SplitBatch(const cv::Mat& batch) {
   }
 
   std::vector<cv::Mat> split_mats;
-  int batch_size = batch.size[0];  // 第0维
-  std::vector<cv::Range> ranges(batch.dims);
+  int batch_size = batch.size[0];
+  std::vector<cv::Range> myranges(batch.dims);
   for (int i = 0; i < batch_size; ++i) {
-    ranges[0] = cv::Range(i, i + 1);
-    for (int d = 1; d < batch.dims; ++d) ranges[d] = cv::Range::all();
-    cv::Mat sub_mat = batch(&ranges[0]);
+    myranges[0] = cv::Range(i, i + 1);
+    for (int d = 1; d < batch.dims; ++d) myranges[d] = cv::Range::all();
+    cv::Mat sub_mat = batch(&myranges[0]);
 
     split_mats.push_back(sub_mat);
   }
@@ -385,12 +294,12 @@ absl::Status Utility::CreateDirectoryRecursive(const std::string& path) {
 
   size_t pos = 0;
   std::string dir = path;
-  #ifdef _WIN32
-    #define ACCESS _access
-    #define F_OK 0
-  #else
-    #define ACCESS access
-  #endif
+#ifdef _WIN32
+#define ACCESS _access
+#define F_OK 0
+#else
+#define ACCESS access
+#endif
   while (pos < dir.size()) {
     pos = dir.find_first_of(PATH_SEPARATOR, pos + 1);
     std::string subdir = (pos == std::string::npos) ? dir : dir.substr(0, pos);
@@ -470,6 +379,26 @@ absl::StatusOr<int> Utility::StringToInt(std::string s) {
   } else {
     return absl::NotFoundError("Could not find int !");
   }
+}
+
+bool Utility::StringToBool(const std::string& str) {
+  std::string result = str;
+  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+  assert(result == "true" || result == "false");
+  if (result == "true") {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+std::string Utility::VecToString(const std::vector<int>& input) {
+  std::string result;
+  for (auto it = input.begin(); it != input.end(); ++it) {
+    if (it != input.begin()) result += ",";
+    result += std::to_string(*it);
+  }
+  return result;
 }
 
 absl::StatusOr<std::tuple<std::string, std::string, std::string>>

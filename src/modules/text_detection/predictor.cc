@@ -17,58 +17,54 @@
 #include "result.h"
 #include "src/common/image_batch_sampler.h"
 
-TextDetPredictor::TextDetPredictor(
-    const std::string& model_dir, const std::string& device,
-    const std::string& precision, const bool enable_mkldnn, int batch_size,
-    const std::unordered_map<std::string, std::string>& config,
-
-    int limit_side_len, const std::string& limit_type, float thresh,
-    float box_thresh, float unclip_ratio, const std::vector<int>& input_shape,
-    int max_side_limit)
-    : BasePredictor(model_dir, device, precision, enable_mkldnn, batch_size,
-                    config, "image"),
-      limit_side_len_(limit_side_len),
-      limit_type_(limit_type),
-      thresh_(thresh),
-      box_thresh_(box_thresh),
-      unclip_ratio_(unclip_ratio),
-      input_shape_(input_shape),
-      max_side_limit_(max_side_limit) {
-  Build();
+TextDetPredictor::TextDetPredictor(const TextDetPredictorParams& params)
+    : BasePredictor(params.model_dir, params.model_name, params.device,
+                    params.precision, params.enable_mkldnn,
+                    params.mkldnn_cache_capacity, params.cpu_threads,
+                    params.batch_size, "image"),
+      params_(params) {
+  auto status = Build();
+  if (!status.ok()) {
+    INFOE("Build fail: %s", status.ToString().c_str());
+    exit(-1);
+  }
 };
 
-TextDetPredictor::TextDetPredictor(const std::string& model_dir,
-                                   const TextDetPredictorParams& params)
-    : BasePredictor(model_dir, params.device, params.precision,
-                    params.enable_mkldnn, params.batch_size, params.config,
-                    "image"),
-      params_(params),
-      limit_side_len_(params.limit_side_len),
-      limit_type_(params.limit_type),
-      thresh_(params.thresh),
-      box_thresh_(params.box_thresh),
-      unclip_ratio_(params.unclip_ratio),
-      input_shape_(params.input_shape),
-      max_side_limit_(params.max_side_limit) {
-  Build();
-};
-
-void TextDetPredictor::Build() {
+absl::Status TextDetPredictor::Build() {
   const auto& pre_tfs = config_.PreProcessOpInfo();
   Register<ReadImage>("Read", pre_tfs.at("DecodeImage.img_mode"));
 
-  Register<DetResizeForTest>(
-      "Resize", std::stoi(pre_tfs.at("DetResizeForTest.resize_long")));
+  DetResizeForTestParam resize_param;
+  resize_param.input_shape = params_.input_shape;
+  resize_param.max_side_limit = params_.max_side_limit;
+  resize_param.limit_side_len = params_.limit_side_len;
+  resize_param.limit_type = params_.limit_type;
+  resize_param.max_side_limit = params_.max_side_limit;
+  resize_param.resize_long =
+      std::stoi(pre_tfs.at("DetResizeForTest.resize_long"));
+  Register<DetResizeForTest>("Resize", resize_param);
   Register<NormalizeImage>("Normalize");
   Register<ToCHWImage>("ToCHW");
   Register<ToBatch>("ToBatch");
   infer_ptr_ = CreateStaticInfer();
   const auto& post_params = config_.PostProcessOpInfo();
-  post_op_["DBPostProcess"] = std::unique_ptr<DBPostProcess>(
-      new DBPostProcess(std::stof(post_params.at("PostProcess.thresh")),
-                        std::stof(post_params.at("PostProcess.box_thresh")),
-                        std::stoi(post_params.at("PostProcess.max_candidates")),
-                        std::stof(post_params.at("PostProcess.unclip_ratio"))));
+  DBPostProcessParams db_param;
+  db_param.thresh = params_.thresh.has_value()
+                        ? params_.thresh
+                        : std::stof(post_params.at("PostProcess.thresh"));
+  db_param.box_thresh =
+      params_.box_thresh.has_value()
+          ? params_.box_thresh
+          : std::stof(post_params.at("PostProcess.box_thresh"));
+  db_param.unclip_ratio =
+      params_.unclip_ratio.has_value()
+          ? params_.unclip_ratio
+          : std::stof(post_params.at("PostProcess.unclip_ratio"));
+  db_param.max_candidates =
+      std::stoi(post_params.at("PostProcess.max_candidates"));
+  post_op_["DBPostProcess"] =
+      std::unique_ptr<DBPostProcess>(new DBPostProcess(db_param));
+  return absl::OkStatus();
 };
 
 std::vector<std::unique_ptr<BaseCVResult>> TextDetPredictor::Process(
@@ -81,43 +77,50 @@ std::vector<std::unique_ptr<BaseCVResult>> TextDetPredictor::Process(
   auto batch_raw_imgs = pre_op_.at("Read")->Apply(batch_data);
   if (!batch_raw_imgs.ok()) {
     INFOE(batch_raw_imgs.status().ToString().c_str());
+    exit(-1);
   }
   std::vector<int> origin_shape = {batch_raw_imgs.value()[0].rows,
                                    batch_raw_imgs.value()[0].cols};
-  DetResizeForTestParam resize_param;
-  resize_param.limit_side_len = limit_side_len_;
-  resize_param.limit_type = limit_type_;
-  resize_param.max_side_limit = max_side_limit_;
-  auto batch_imgs =
-      pre_op_.at("Resize")->Apply(batch_raw_imgs.value(), &resize_param);
+
+  auto batch_imgs = pre_op_.at("Resize")->Apply(batch_raw_imgs.value());
   if (!batch_imgs.ok()) {
     INFOE(batch_imgs.status().ToString().c_str());
+    exit(-1);
   }
   auto batch_imgs_normalize =
       pre_op_.at("Normalize")->Apply(batch_imgs.value());
   if (!batch_imgs_normalize.ok()) {
     INFOE(batch_imgs_normalize.status().ToString().c_str());
+    exit(-1);
   }
 
   auto batch_imgs_to_chw =
       pre_op_.at("ToCHW")->Apply(batch_imgs_normalize.value());
   if (!batch_imgs_to_chw.ok()) {
     INFOE(batch_imgs_to_chw.status().ToString().c_str());
+    exit(-1);
   }
   auto batch_imgs_to_batch =
       pre_op_.at("ToBatch")->Apply(batch_imgs_to_chw.value());
   if (!batch_imgs_to_batch.ok()) {
     INFOE(batch_imgs_to_batch.status().ToString().c_str());
+    exit(-1);
   }
+  for (int i = 0; i < batch_imgs_to_batch.value()[0].dims; i++) {
+    std::cout << batch_imgs_to_batch.value()[0].size[i] << " ";
+  }
+  std::cout << std::endl;
   auto infer_result = infer_ptr_->Apply(batch_imgs_to_batch.value());
   if (!infer_result.ok()) {
     INFOE(infer_result.status().ToString().c_str());
+    exit(-1);
   }
   auto db_result = post_op_.at("DBPostProcess")
                        ->Apply(infer_result.value()[0], origin_shape);
 
   if (!db_result.ok()) {
     INFOE(db_result.status().ToString().c_str());
+    exit(-1);
   }
 
   std::vector<std::unique_ptr<BaseCVResult>> base_cv_result_ptr_vec = {};

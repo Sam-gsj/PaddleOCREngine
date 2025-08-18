@@ -19,100 +19,99 @@
 #include "src/modules/image_unwarping/predictor.h"
 
 _DocPreprocessorPipeline::_DocPreprocessorPipeline(
-    const std::string& model_dir, const DocPreprocessorPipelineParams& params)
-    : BasePipeline(model_dir), params_(params), config_(params.config) {
-  if (params.config.empty()) {
+    const DocPreprocessorPipelineParams& params)
+    : BasePipeline(), params_(params) {
+  if (params.paddlex_config.has_value()) {
+    if (params.paddlex_config.value().IsStr()) {
+      config_ = YamlConfig(params.paddlex_config.value().GetStr());
+    } else {
+      config_ = YamlConfig(params.paddlex_config.value().GetMap());
+    }
+  } else {
     auto config_path = Utility::GetDefaultConfig("doc_preprocessor");
     if (!config_path.ok()) {
       INFOE("Could not find doc_preprocessors pipeline config file : %s",
             config_path.status().ToString().c_str());
+      exit(-1);
     }
     config_ = YamlConfig(config_path.value());
   }
+  OverrideConfig();
   auto result_doc = config_.GetBool("use_doc_orientation_classify", true);
   if (!result_doc.ok()) {
     INFOE("use_doc_orientation_classify set fail : %s",
           result_doc.status().ToString().c_str());
-    return;
-  }
-  auto result_batch = config_.GetInt(
-      "batch_size", 1);  // if a pipeline has more than one predictor, must be
-                         // provide different batch_size
-  if (!result_batch.ok()) {
-    INFOE("batch_size get fail: %s", result_batch.status().ToString().c_str());
-    return;
+    exit(-1);
   }
   use_doc_orientation_classify_ = result_doc.value();
+  auto result_batch = config_.GetInt("batch_size", 1);
+  if (!result_batch.ok()) {
+    INFOE("batch_size get fail: %s", result_batch.status().ToString().c_str());
+    exit(-1);
+  }
 
   if (use_doc_orientation_classify_) {
-    auto doc_ori_classify_config = config_.GetSubModule(
-        "SubModules.DocOrientationClassify");  //*** maybe useless
-    if (!doc_ori_classify_config.ok()) {
-      INFOE("SubModules.DocOrientationClassify get fail: %s",
-            doc_ori_classify_config.status().ToString().c_str());
-      return;
-    }
     ClasPredictorParams doc_ori_classify_params;
-    doc_ori_classify_params.device = params_.device;
-    doc_ori_classify_params.precision = params_.precision;
-    doc_ori_classify_params.enable_mkldnn = params_.enable_mkldnn;
-    doc_ori_classify_params.batch_size = result_batch.value();
-
+    auto result_model_dir =
+        config_.GetString("DocOrientationClassify.model_dir");
+    if (!result_model_dir.ok()) {
+      INFOE("Could not find DocOrientationClassify model dir : %s",
+            result_model_dir.status().ToString().c_str());
+      exit(-1);
+    }
     auto result_model_name =
         config_.GetString("DocOrientationClassify.model_name");
     if (!result_model_name.ok()) {
       INFOE("Could not find DocOrientationClassify model name : %s",
             result_model_name.status().ToString().c_str());
-      return;
+      exit(-1);
     }
-    auto model_dir_doc =
-        Utility::FindModelPath(model_dir, result_model_name.value());
-    if (!model_dir_doc.ok()) {
-      INFOE("doc orientation classify model path is not exists : %s",
-            model_dir_doc.status().ToString().c_str());
-      return;
-    }
-    doc_ori_classify_model_ = CreateModule<ClasPredictor>(
-        model_dir_doc.value(), doc_ori_classify_params);
+    doc_ori_classify_params.model_dir = result_model_dir.value();
+    doc_ori_classify_params.model_name = result_model_name.value();
+    doc_ori_classify_params.device = params_.device;
+    doc_ori_classify_params.precision = params_.precision;
+    doc_ori_classify_params.enable_mkldnn = params_.enable_mkldnn;
+    doc_ori_classify_params.mkldnn_cache_capacity =
+        params_.mkldnn_cache_capacity;
+    doc_ori_classify_params.cpu_threads = params_.cpu_threads;
+    doc_ori_classify_params.batch_size = result_batch.value();
+
+    doc_ori_classify_model_ =
+        CreateModule<ClasPredictor>(doc_ori_classify_params);
   }
 
   auto result_unwarping = config_.GetBool("use_doc_unwarping", true);
   if (!result_unwarping.ok()) {
     INFOE("use_doc_unwarping get fail:%s",
           result_unwarping.status().ToString().c_str());
-    return;
+    exit(-1);
   }
   use_doc_unwarping_ = result_unwarping.value();
 
   if (use_doc_unwarping_) {
-    auto doc_unwarping_config =
-        config_.GetSubModule("SubModules.DocUnwarping");  //*** maybe useless
-    if (!doc_unwarping_config.ok()) {
-      INFOE("SubModules.DocUnwarping get fail %s",
-            doc_unwarping_config.status().ToString().c_str());
-      return;
-    }
     WarpPredictorParams doc_unwarping_params;
-    doc_unwarping_params.device = params_.device;
-    doc_unwarping_params.precision = params_.precision;
-    doc_unwarping_params.enable_mkldnn = params_.enable_mkldnn;
-    doc_unwarping_params.batch_size = result_batch.value();
-
+    auto result_model_dir = config_.GetString("DocUnwarping.model_dir");
+    if (!result_model_dir.ok()) {
+      INFOE("Could not find DocUnwarping model dir : %s",
+            result_model_dir.status().ToString().c_str());
+      exit(-1);
+    }
     auto result_model_name = config_.GetString("DocUnwarping.model_name");
     if (!result_model_name.ok()) {
       INFOE("Could not find DocUnwarping model name : %s",
             result_model_name.status().ToString().c_str());
-      return;
+      exit(-1);
     }
-    auto model_dir_unwarping =
-        Utility::FindModelPath(model_dir, result_model_name.value());
-    if (!model_dir_unwarping.ok()) {
-      INFOE("DocUnwarping model path is not exists : %s",
-            model_dir_unwarping.status().ToString().c_str());
-      return;
-    }
-    doc_unwarping_model_ = CreateModule<WarpPredictor>(
-        model_dir_unwarping.value(), doc_unwarping_params);
+    doc_unwarping_params.model_dir = result_model_dir.value();
+    doc_unwarping_params.model_name = result_model_name.value();
+    doc_unwarping_params.device = params_.device;
+    doc_unwarping_params.precision = params_.precision;
+    doc_unwarping_params.enable_mkldnn = params_.enable_mkldnn;
+    doc_unwarping_params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
+    doc_unwarping_params.cpu_threads = params_.cpu_threads;
+    doc_unwarping_params.batch_size = result_batch.value();
+
+    doc_unwarping_model_ = CreateModule<WarpPredictor>(doc_unwarping_params);
   }
 
   batch_sampler_ptr_ = std::unique_ptr<BaseBatchSampler>(
@@ -126,10 +125,12 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
   if (!status.ok()) {
     INFOE("the input params for model settings are invalid!: %s",
           status.ToString().c_str());
+    exit(-1);
   }
   auto batches = batch_sampler_ptr_->Apply(input);
   if (!batches.ok()) {
     INFOE("pipeline get sample fail : %s", batches.status().ToString().c_str());
+    exit(-1);
   }
   auto input_path = batch_sampler_ptr_->InputPath();
   int index = 0;
@@ -155,6 +156,7 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
         if (!result_angle.ok()) {
           INFOE("angle is invalid : %s",
                 result_angle.status().ToString().c_str());
+          exit(-1);
         }
         angles.push_back(result_angle.value());
         auto result_rotate = ComponentsProcessor::RotateImage(
@@ -162,6 +164,7 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
         if (!result_rotate.ok()) {
           INFOE("RotateImage fail : %s",
                 result_rotate.status().ToString().c_str());
+          exit(-1);
         }
         rotate_images.push_back(result_rotate.value());
       }
@@ -207,96 +210,6 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
   return base_cv_result_ptr_vec;
 };
 
-// std::vector<std::unique_ptr<BaseCVResult>>
-// _DocPreprocessorPipeline::Predict(const std::vector<std::string>& input){
-// //******* & or not
-//    auto  model_setting = GetModelSettings();
-//    auto status = CheckModelSettingsVaild(model_setting);
-//    if(!status.ok()){
-//         INFOE("the input params for model settings are invalid!:
-//         %s",status.ToString().c_str());
-//    }
-//    auto batches_string = batch_sampler_ptr_->SampleFromVector(input);
-//    if (!batches_string.ok()) {
-//         INFOE("pipeline get sample fail :
-//         %s",batches_string.status().ToString().c_str());
-//    }
-//    auto input_path = batch_sampler_ptr_->InputPath();
-//    int index = 0;
-//    std::vector<cv::Mat> origin_image = {};
-
-//    std::vector<std::unique_ptr<BaseCVResult>> base_cv_result_ptr_vec = {};
-//    std::vector<DocPreprocessorPipelineResult> pipeline_result_vec = {};
-//    for(auto& batch_data : batches_string.value()){
-//         origin_image.reserve(batch_data.size());
-//         for (const auto& mat : batch_data) {
-//             origin_image.push_back(Utility::MyLoadImage(mat).value());
-//         }
-//         std::vector<int> angles = {};
-//         std::vector<cv::Mat> rotate_images ={};
-//         if(model_setting["use_doc_orientation_classify"]){
-//             doc_ori_classify_model_->Predict(batch_data);
-//             ClasPredictor* derived =
-//             static_cast<ClasPredictor*>(doc_ori_classify_model_.get());
-//             std::vector<ClasPredictorResult> preds =
-//             derived->PredictorResult(); for(auto& pred : preds){
-//                 auto result_angle =
-//                 Utility::StringToInt(pred.label_names[0]);
-//                 if(!result_angle.ok()){
-//                     INFOE("angle is invalid :
-//                     %s",result_angle.status().ToString().c_str());
-//                 }
-//                 angles.push_back(result_angle.value());
-//                 auto result_rotate =
-//                 ComponentsProcessor::RotateImage(pred.input_image,result_angle.value());
-//                 if(!result_rotate.ok()){
-//                     INFOE("RotateImage fail :
-//                     %s",result_rotate.status().ToString().c_str());
-//                 }
-//                 rotate_images.push_back(result_rotate.value());
-//             }
-//         }else{
-//             angles = std::vector<int>(batch_data.size(),-1);
-//             for(auto& image : origin_image){
-//                 rotate_images.push_back(image.clone());
-//             }
-//         }
-//         std::vector<cv::Mat> output_imgs = {};
-//         if(model_setting["use_doc_unwarping"]){
-//             doc_unwarping_model_->Predict(rotate_images);
-//             WarpPredictor* derived =
-//             static_cast<WarpPredictor*>(doc_unwarping_model_.get());
-//             std::vector<WarpPredictorResult> preds =
-//             derived->PredictorResult(); for(auto& pred: preds){
-//                 output_imgs.push_back(pred.doctr_img); //***"RGB" "BGR"
-//             }
-//         }else{
-//             output_imgs = rotate_images;
-//         }
-
-//         pipeline_result_vec.clear();
-//         for(int i = 0 ; i<output_imgs.size();i++, index++){
-//             DocPreprocessorPipelineResult pipeline_result;
-//             pipeline_result.input_path = input_path[index];
-//             pipeline_result.input_image = origin_image[i];
-//             pipeline_result.model_settings = model_setting;
-//             pipeline_result.angle = angles[i];
-//             pipeline_result.rotate_image = rotate_images[i];
-//             pipeline_result.output_image = output_imgs[i];
-//             pipeline_result_vec.push_back(pipeline_result);
-//         }
-//         origin_image.clear();
-//         pipeline_result_vec_.insert(pipeline_result_vec_.end(),pipeline_result_vec.begin(),pipeline_result_vec.end());
-//         for(auto& pipeline_result: pipeline_result_vec){
-//             std::unique_ptr<BaseCVResult> base_cv_result_ptr =
-//             std::unique_ptr<BaseCVResult>(new
-//             DocPreprocessorResult(pipeline_result));
-//             base_cv_result_ptr_vec.emplace_back(std::move(base_cv_result_ptr));
-//         }
-//    }
-//    return base_cv_result_ptr_vec;
-// };
-
 std::unordered_map<std::string, bool>
 _DocPreprocessorPipeline::GetModelSettings(
     absl::optional<bool> use_doc_orientation_classify,
@@ -341,12 +254,14 @@ std::vector<std::unique_ptr<BaseCVResult>> DocPreprocessorPipeline::Predict(
   auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
   if (!status.ok()) {
     INFOE("Set batch size fail : %s", status.ToString().c_str());
+    exit(-1);
   }
   auto infer_batch_data =
       batch_sampler_ptr_->SampleFromVectorToStringVector(input);
   if (!infer_batch_data.ok()) {
     INFOE("Get infer batch data fail : %s",
           infer_batch_data.status().ToString().c_str());
+    exit(-1);
   }
   std::vector<std::unique_ptr<BaseCVResult>> results = {};
   results.reserve(input_num);
@@ -355,6 +270,7 @@ std::vector<std::unique_ptr<BaseCVResult>> DocPreprocessorPipeline::Predict(
         AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
     if (!status.ok()) {
       INFOE("Infer fail : %s", status.ToString().c_str());
+      exit(-1);
     }
   }
   for (int i = 0; i < infer_batch_data.value().size(); i++) {
@@ -362,10 +278,85 @@ std::vector<std::unique_ptr<BaseCVResult>> DocPreprocessorPipeline::Predict(
     if (!infer_data_result.ok()) {
       INFOE("Get infer result fail : %s",
             infer_batch_data.status().ToString().c_str());
+      exit(-1);
     }
     results.insert(results.end(),
                    std::make_move_iterator(infer_data_result.value().begin()),
                    std::make_move_iterator(infer_data_result.value().end()));
   }
   return results;
+}
+
+void _DocPreprocessorPipeline::OverrideConfig() {
+  auto& data = config_.Data();
+  if (params_.doc_orientation_classify_model_name.has_value()) {
+    auto it = config_.FindKey("DocOrientationClassify.model_name");
+    if (!it.ok()) {
+      data
+          ["DocPreprocessor.SubModules.DocOrientationClassify."
+           "model_name"] = params_.doc_orientation_classify_model_name.value();
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] = params_.doc_orientation_classify_model_name.value();
+    }
+  }
+  if (params_.doc_orientation_classify_model_dir.has_value()) {
+    auto it = config_.FindKey("DocOrientationClassify.model_dir");
+    if (!it.ok()) {
+      data
+          ["DocPreprocessor.SubModules.DocOrientationClassify."
+           "model_dir"] = params_.doc_orientation_classify_model_dir.value();
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] = params_.doc_orientation_classify_model_dir.value();
+    }
+  }
+  if (params_.doc_unwarping_model_name.has_value()) {
+    auto it = config_.FindKey("DocUnwarping.model_name");
+    if (!it.ok()) {
+      data["DocPreprocessor.SubModules.DocUnwarping.model_name"] =
+          params_.doc_unwarping_model_name.value();
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] = params_.doc_unwarping_model_name.value();
+    }
+  }
+  if (params_.doc_unwarping_model_dir.has_value()) {
+    auto it = config_.FindKey("DocUnwarping.model_dir");
+    if (!it.ok()) {
+      data["DocPreprocessor.SubModules.DocUnwarping.model_dir"] =
+          params_.doc_unwarping_model_dir.value();
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] = params_.doc_unwarping_model_dir.value();
+    }
+  }
+
+  if (params_.use_doc_orientation_classify.has_value()) {
+    auto it = config_.FindKey("DocPreprocessor.use_doc_orientation_classify");
+    if (!it.ok()) {
+      data["DocPreprocessor.use_doc_orientation_classify"] =
+          params_.use_doc_orientation_classify.value() ? "true" : "false";
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] =
+          params_.use_doc_orientation_classify.value() ? "true" : "false";
+    }
+  }
+  if (params_.use_doc_unwarping.has_value()) {
+    auto it = config_.FindKey("DocPreprocessor.use_doc_unwarping");
+    if (!it.ok()) {
+      data["DocPreprocessor.use_doc_unwarping"] =
+          params_.use_doc_unwarping.value() ? "true" : "false";
+    } else {
+      auto key = it.value().first;
+      data.erase(data.find(key));
+      data[key] = params_.use_doc_unwarping.value() ? "true" : "false";
+    }
+  }
 }

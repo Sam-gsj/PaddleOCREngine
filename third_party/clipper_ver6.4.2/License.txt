@@ -1,4 +1,4 @@
-Boost Software License - Version 1.0 - August 17th, 2003
+third_party/clipper_ver6.4.2/cpp/polyclipping.pc.cmakein third_party/clipper_ver6.4.2/cpp/CMakeLists.txt third_party/clipper_ver6.4.2/cpp/clipper.hpp third_party/clipper_ver6.4.2/cpp/clipper.cpp third_party/clipper_ver6.4.2/cpp/cpp_opengl third_party/clipper_ver6.4.2/cpp/cpp_console third_party/clipper_ver6.4.2/cpp/cpp_cairo third_party/clipper_ver6.4.2/cpp/cpp_agg third_party/clipper_ver6.4.2/cpp/buildBoost Software License - Version 1.0 - August 17th, 2003
 http://www.boost.org/LICENSE_1_0.txt
 
 Permission is hereby granted, free of charge, to any person or organization

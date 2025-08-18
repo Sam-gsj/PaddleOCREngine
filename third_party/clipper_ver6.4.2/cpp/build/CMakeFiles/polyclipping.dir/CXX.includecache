@@ -6,9 +6,9 @@
 
 #IncludeRegexTransform: 
 
-/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.cpp
+/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.cpp
 clipper.hpp
-/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.hpp
+/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.hpp
 cmath
 -
 vector
@@ -26,7 +26,7 @@ ostream
 functional
 -
 
-/workspace/cpp_infer_refactor/clipper_ver6.4.2/cpp/clipper.hpp
+/workspace/cpp_infer_refactor/third_party/clipper_ver6.4.2/cpp/clipper.hpp
 vector
 -
 list

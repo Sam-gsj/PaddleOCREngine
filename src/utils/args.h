@@ -16,7 +16,6 @@
 
 #include <gflags/gflags.h>
 
-
 DECLARE_string(input);
 DECLARE_string(save_path);
 DECLARE_string(doc_orientation_classify_model_name);
@@ -45,12 +44,10 @@ DECLARE_string(text_rec_input_shape);
 DECLARE_string(lang);
 DECLARE_string(ocr_version);
 DECLARE_string(device);
+DECLARE_string(vis_font_dir);
 DECLARE_string(precision);
 DECLARE_string(enable_mkldnn);
 DECLARE_string(mkldnn_cache_capacity);
 DECLARE_string(cpu_threads);
 DECLARE_string(threads);
 DECLARE_string(paddlex_config);
-
-
-

@@ -20,6 +20,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "src/base/base_pipeline.h"
 #include "src/common/image_batch_sampler.h"
 #include "src/common/parallel.h"
@@ -38,24 +39,26 @@ struct DocPreprocessorPipelineResult {
 };
 
 struct DocPreprocessorPipelineParams {
-  std::string device = "cpu";
+  absl::optional<std::string> doc_orientation_classify_model_name =
+      absl::nullopt;
+  absl::optional<std::string> doc_orientation_classify_model_dir =
+      absl::nullopt;
+  absl::optional<std::string> doc_unwarping_model_name = absl::nullopt;
+  absl::optional<std::string> doc_unwarping_model_dir = absl::nullopt;
+  absl::optional<bool> use_doc_orientation_classify = absl::nullopt;
+  absl::optional<bool> use_doc_unwarping = absl::nullopt;
+  absl::optional<std::string> device = absl::nullopt;
+  bool enable_mkldnn = true;
+  int mkldnn_cache_capacity = 10;
   std::string precision = "fp32";
-  bool enable_mkldnn = false;
-  std::unordered_map<std::string, std::string> config = {};
-  bool use_doc_orientation_classify = false;
-  bool use_doc_unwarping = false;
+  int cpu_threads = 8;
+  int threads = 1;
+  absl::optional<Utility::PaddleXConfigVariant> paddlex_config = absl::nullopt;
 };
 
 class _DocPreprocessorPipeline : public BasePipeline {
  public:
   explicit _DocPreprocessorPipeline(
-      const std::string& model_dir, std::string device = "cpu",
-      const std::string& precision = "fp32", bool enable_mkldnn = false,
-      const std::unordered_map<std::string, std::string>& config = {},
-      bool use_doc_orientation_classify = false,
-      bool use_doc_unwarping = false);
-  explicit _DocPreprocessorPipeline(
-      const std::string& model_dir,
       const DocPreprocessorPipelineParams& params);
   virtual ~_DocPreprocessorPipeline() = default;
 
@@ -74,6 +77,8 @@ class _DocPreprocessorPipeline : public BasePipeline {
     return pipeline_result_vec_;
   };
 
+  void OverrideConfig();
+
  private:
   bool use_doc_orientation_classify_;
   bool use_doc_unwarping_;
@@ -91,11 +96,9 @@ class DocPreprocessorPipeline
           std::vector<std::string>,
           std::vector<std::unique_ptr<BaseCVResult>>> {
  public:
-  DocPreprocessorPipeline(const std::string& model_dir,
-                          const DocPreprocessorPipelineParams& params,
-                          int thread_num = 1)
-      : AutoParallelSimpleInferencePipeline(model_dir, params, thread_num),
-        thread_num_(thread_num){};
+  DocPreprocessorPipeline(const DocPreprocessorPipelineParams& params)
+      : AutoParallelSimpleInferencePipeline(params),
+        thread_num_(params.threads){};
 
   std::vector<std::unique_ptr<BaseCVResult>> Predict(
       const std::vector<std::string>& input) override;

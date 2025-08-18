@@ -96,6 +96,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/3.18.0/CMakeCCompiler.cmake"
   "CMakeFiles/3.18.0/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.18.0/CMakeSystem.cmake"
+  "../clipper.hpp"
   "../polyclipping.pc.cmakein"
   )
 
@@ -112,6 +113,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/3.18.0/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.18.0/CMakeCCompiler.cmake"
   "CMakeFiles/3.18.0/CMakeCXXCompiler.cmake"
+  "polyclipping/clipper.hpp"
   "polyclipping.pc"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   )

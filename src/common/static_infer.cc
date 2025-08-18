@@ -31,7 +31,7 @@ PaddleInfer::PaddleInfer(const std::string &model_name,
   auto result = Create();
   if (!result.ok()) {
     INFOE("Create predictor failed: %s", result.status().ToString().c_str());
-    return;
+    exit(-1);
   }
 
   predictor_ = std::move(result.value());
@@ -140,16 +140,17 @@ absl::StatusOr<std::vector<cv::Mat>> PaddleInfer::Apply(
     std::vector<int> input_shape(x[0].dims);
     for (int i = 0; i < x[0].dims; i++) {
       input_shape[i] = x[0].size[i];
+      // std::cout << input_shape[i]<<" ";
     }
+    // std::cout<<std::endl;
     input_handle->Reshape(input_shape);
     input_handle->CopyFromCpu<float>((float *)x[i].data);
   }
   try {
     predictor_->Run();
   } catch (const std::exception &e) {
-    std::cerr << "Exception caught: " << e.what() << std::endl;
-  } catch (...) {
-    std::cerr << "Unknown exception caught!" << std::endl;
+    INFOE("static Infer fail: %s", e.what());
+    exit(-1);
   }
 
   std::vector<std::vector<float>> outputs;
@@ -191,6 +192,7 @@ absl::Status PaddleInfer::CheckRunMode() {
       INFOE(
           "Now, the `LaTeX_OCR_rec` model only support `mkldnn` mode when "
           "running on Intel CPU devices. So using `mkldnn` instead.");
+      exit(-1);
       auto result = option_.SetRunMode("mkldnn");
       if (!result.ok()) {
         return result;

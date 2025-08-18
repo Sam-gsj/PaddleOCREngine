@@ -25,10 +25,12 @@ YamlConfig::YamlConfig(const std::string& model_dir) {
   if (!status_get.ok()) {
     INFOE("Could find files with the .yaml or .yml in %s %s", model_dir.c_str(),
           status_get.ToString().c_str());
+    exit(-1);
   }
   auto status = LoadYamlFile();
   if (!status.ok()) {
     INFOE("Failed to load config: ", status.ToString().c_str());
+    exit(-1);
   }
   Init();
 }
@@ -183,8 +185,6 @@ absl::StatusOr<std::string> YamlConfig::GetString(
       return info.second;
     }
   }
-  INFOW("Key not found %s,will use default value %s.", key.c_str(),
-        default_value.c_str());
   return default_value;
 }
 
@@ -384,11 +384,12 @@ VectorVariant YamlConfig::SmartParseVector(const std::string& input) {
   return result;
 }
 
-absl::StatusOr<std::pair<std::string,std::string>>  YamlConfig::FindKey(const std::string& key) {
+absl::StatusOr<std::pair<std::string, std::string>> YamlConfig::FindKey(
+    const std::string& key) {
   for (const auto& info : data_) {
     if (info.first.find(key) != std::string::npos) {
       return info;
     }
   }
-  return absl::NotFoundError("Could find key "+ key);
+  return absl::NotFoundError("Could find key " + key);
 }

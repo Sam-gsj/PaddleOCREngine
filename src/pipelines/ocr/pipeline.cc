@@ -16,14 +16,20 @@
 
 #include "result.h"
 #include "src/utils/args.h"
-_OCRPipeline::_OCRPipeline(const std::string& model_dir,
-                           const OCRPipelineParams& params)
-    : BasePipeline(model_dir), params_(params), config_(params.config) {
-  if (params.config.empty()) {
+_OCRPipeline::_OCRPipeline(const OCRPipelineParams& params)
+    : BasePipeline(), params_(params) {
+  if (params.paddlex_config.has_value()) {  //***
+    if (params.paddlex_config.value().IsStr()) {
+      config_ = YamlConfig(params.paddlex_config.value().GetStr());
+    } else {
+      config_ = YamlConfig(params.paddlex_config.value().GetMap());
+    }
+  } else {
     auto config_path = Utility::GetDefaultConfig("OCR");
     if (!config_path.ok()) {
       INFOE("Could not find OCR pipeline config file: %s",
             config_path.status().ToString().c_str());
+      exit(-1);
     }
     config_ = YamlConfig(config_path.value());
   }
@@ -33,6 +39,7 @@ _OCRPipeline::_OCRPipeline(const std::string& model_dir,
   if (!result_use_doc_preprocessor.ok()) {
     INFOE("use_doc_preprocessor config error : %s",
           result_use_doc_preprocessor.status().ToString().c_str());
+    exit(-1);
   }
   use_doc_preprocessor_ = result_use_doc_preprocessor.value();
   if (use_doc_preprocessor_) {
@@ -40,49 +47,45 @@ _OCRPipeline::_OCRPipeline(const std::string& model_dir,
     if (!result_doc_preprocessor_config.ok()) {
       INFOE("Get doc preprocessors subpipelines config fail : ",
             result_doc_preprocessor_config.status().ToString().c_str());
+      exit(-1);
     }
     DocPreprocessorPipelineParams params;
     params.device = params_.device;
     params.precision = params_.precision;
     params.enable_mkldnn = params_.enable_mkldnn;
-    params.use_doc_orientation_classify =
-        config_.GetBool("DocPreprocessor.use_doc_orientation_classify", true)
-            .value();  //** maybe no useless, config include
-    params.use_doc_unwarping =
-        config_.GetBool("DocPreprocessor.use_doc_unwarping", true).value();
-    use_doc_orientation_classify_ =
-        params.use_doc_orientation_classify;  //** maybe no useless, config
-                                              // include
-    use_doc_unwarping_ = params.use_doc_unwarping;
-    params.config = result_doc_preprocessor_config.value();
-
+    params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
+    params.cpu_threads = params_.cpu_threads;
+    params.paddlex_config = result_doc_preprocessor_config.value();
     doc_preprocessors_pipeline_ =
-        CreatePipeline<_DocPreprocessorPipeline>(model_dir, params);
+        CreatePipeline<_DocPreprocessorPipeline>(params);
+
+    use_doc_orientation_classify_ =
+        config_.GetBool("DocPreprocessor.use_doc_orientation_classify", true)
+            .value();
+    use_doc_unwarping_ =
+        config_.GetBool("DocPreprocessor.use_doc_unwarping", true).value();
   }
   auto result_use_textline_orientation =
       config_.GetBool("use_textline_orientation", true);
-  if (!result_use_doc_preprocessor.ok()) {
+  if (!result_use_textline_orientation.ok()) {
     INFOE("use_textline_orientation config error : %s",
-          result_use_doc_preprocessor.status().ToString().c_str());
+          result_use_textline_orientation.status().ToString().c_str());
+    exit(-1);
   }
   use_textline_orientation_ = result_use_textline_orientation.value();
   if (use_textline_orientation_) {
-    auto result_textline_orientation_config =
-        config_.GetSubModule("SubModules.TextLineOrientation");
-    if (!result_textline_orientation_config.ok()) {
-      INFOE("Get textline orientation module config error :%s",
-            result_textline_orientation_config.status().ToString().c_str());
-    }
     ClasPredictorParams params;
     params.device = params_.device;
     params.precision = params_.precision;
     params.enable_mkldnn = params_.enable_mkldnn;
+    params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
+    params.cpu_threads = params_.cpu_threads;
     auto result_batch_size =
         config_.GetInt("TextLineOrientation.batch_size", 1);
     if (!result_batch_size.ok()) {
       INFOE("Get TextLineOrientation batch size fail: %s",
             result_batch_size.status().ToString().c_str());
-      return;
+      exit(-1);
     }
     params.batch_size = result_batch_size.value();
 
@@ -91,24 +94,50 @@ _OCRPipeline::_OCRPipeline(const std::string& model_dir,
     if (!result_model_name.ok()) {
       INFOE("Could not find TextLineOrientation model name : %s",
             result_model_name.status().ToString().c_str());
-      return;
+      exit(-1);
     }
-    auto model_dir_text_line_orientation =
-        Utility::FindModelPath(model_dir, result_model_name.value());
-
-    textline_orientation_model_ = CreateModule<ClasPredictor>(
-        model_dir_text_line_orientation.value(), params);
+    params.model_name = result_model_name.value();
+    auto result_model_dir = config_.GetString("TextLineOrientation.model_dir");
+    if (!result_model_dir.ok()) {
+      INFOE("Could not find TextLineOrientation model dir : %s",
+            result_model_dir.status().ToString().c_str());
+      exit(-1);
+    }
+    params.model_dir = result_model_dir.value();
+    textline_orientation_model_ = CreateModule<ClasPredictor>(params);
   }
   auto text_type = config_.GetString("text_type");
   if (!text_type.ok()) {
     INFOE("Get text type fail : %s", text_type.status().ToString().c_str());
-    return;
+    exit(-1);
   }
   text_type_ = text_type.value();
   TextDetPredictorParams params_det;
+  auto result_text_det_model_name =
+      config_.GetString("TextDetection.model_name");
+  if (!result_text_det_model_name.ok()) {
+    INFOE("Could not find TextDetection model name : %s",
+          result_text_det_model_name.status().ToString().c_str());
+    exit(-1);
+  }
+  params_det.model_name = result_text_det_model_name.value();
+  auto result_text_det_model_dir = config_.GetString("TextDetection.model_dir");
+  if (!result_text_det_model_dir.ok()) {
+    INFOE("Could not find TextDetection model dir : %s",
+          result_text_det_model_dir.status().ToString().c_str());
+    exit(-1);
+  }
+  params_det.model_dir = result_text_det_model_dir.value();
+  auto result_det_input_shape = config_.GetString("TextDetection.input_shape");
+  if (!result_det_input_shape.value().empty()) {
+    params_det.input_shape =
+        config_.SmartParseVector(result_det_input_shape.value()).vec_int;
+  }
   params_det.device = params_.device;
   params_det.precision = params_.precision;
   params_det.enable_mkldnn = params_.enable_mkldnn;
+  params_det.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
+  params_det.cpu_threads = params_.cpu_threads;
   params_det.batch_size = config_.GetInt("TextDetection.batch_size", 1).value();
   if (text_type_ == "general") {
     params_det.limit_side_len =
@@ -140,46 +169,52 @@ _OCRPipeline::_OCRPipeline(const std::string& model_dir,
     crop_by_polys_ = std::unique_ptr<CropByPolys>(new CropByPolys("poly"));
   } else {
     INFOE("Unsupported text type We %s", text_type.value().c_str());
-    return;
+    exit(-1);
   }
+  text_det_model_ = CreateModule<TextDetPredictor>(params_det);
 
-  text_det_params_.text_det_limit_side_len = params_det.limit_side_len;
-  text_det_params_.text_det_limit_type = params_det.limit_type;
-  text_det_params_.text_det_max_side_limit = params_det.max_side_limit;
-  text_det_params_.text_det_thresh = params_det.thresh;
-  text_det_params_.text_det_box_thresh = params_det.box_thresh;
-  text_det_params_.text_det_unclip_ratio = params_det.unclip_ratio;
-
-  auto result_text_det_model_name =
-      config_.GetString("TextDetection.model_name");
-  if (!result_text_det_model_name.ok()) {
-    INFOE("Could not find TextDetection model name : %s",
-          result_text_det_model_name.status().ToString().c_str());
-    return;
-  }
-  auto model_dir_text_det =
-      Utility::FindModelPath(model_dir, result_text_det_model_name.value());
-
-  text_det_model_ =
-      CreateModule<TextDetPredictor>(model_dir_text_det.value(), params_det);
+  text_det_params_.text_det_limit_side_len = params_det.limit_side_len.value();
+  text_det_params_.text_det_limit_type = params_det.limit_type.value();
+  text_det_params_.text_det_max_side_limit = params_det.max_side_limit.value();
+  text_det_params_.text_det_thresh = params_det.thresh.value();
+  text_det_params_.text_det_box_thresh = params_det.box_thresh.value();
+  text_det_params_.text_det_unclip_ratio = params_det.unclip_ratio.value();
 
   TextRecPredictorParams params_rec;
-  params_rec.device = params_.device;
-  params_rec.precision = params_.precision;
-  params_rec.enable_mkldnn = params_.enable_mkldnn;
-
   auto result_text_rec_model_name =
       config_.GetString("TextRecognition.model_name");
   if (!result_text_rec_model_name.ok()) {
     INFOE("Could not find TextRecognition model name : %s",
           result_text_rec_model_name.status().ToString().c_str());
-    return;
+    exit(-1);
   }
-  auto model_dir_text_rec =
-      Utility::FindModelPath(model_dir, result_text_rec_model_name.value());
+  params_rec.model_name = result_text_rec_model_name.value();
+  auto result_text_rec_model_dir =
+      config_.GetString("TextRecognition.model_dir");
+  if (!result_text_rec_model_dir.ok()) {
+    INFOE("Could not find TextRecognition model dir : %s",
+          result_text_rec_model_dir.status().ToString().c_str());
+    exit(-1);
+  }
+  auto result_rec_input_shape =
+      config_.GetString("TextRecognition.input_shape");
+  if (!result_rec_input_shape.value().empty()) {
+    params_rec.input_shape =
+        config_.SmartParseVector(result_rec_input_shape.value()).vec_int;
+  }
+  params_rec.model_dir = result_text_rec_model_dir.value();
+  params_rec.lang = params_.lang;
+  params_rec.ocr_version = params_.ocr_version;
+  params_rec.vis_font_dir = params_.vis_font_dir;
+  params_rec.device = params_.device;
+  params_rec.precision = params_.precision;
+  params_rec.enable_mkldnn = params_.enable_mkldnn;
+  params_rec.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
+  params_rec.cpu_threads = params_.cpu_threads;
+  params_rec.batch_size =
+      config_.GetInt("TextRecognition.batch_size", 1).value();
 
-  text_rec_model_ =
-      CreateModule<TextRecPredictor>(model_dir_text_rec.value(), params_rec);
+  text_rec_model_ = CreateModule<TextRecPredictor>(params_rec);
   text_rec_score_thresh_ =
       config_.GetFloat("TextRecognition.score_thresh", 0.0).value();
 
@@ -233,10 +268,12 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
       batch_sampler_ptr_->SampleFromVectorToStringVector(input);
   if (!batches.ok()) {
     INFOE("pipeline get sample fail : %s", batches.status().ToString().c_str());
+    exit(-1);
   }
   if (!batches_string.ok()) {
     INFOE("pipeline get sample fail : %s",
           batches_string.status().ToString().c_str());
+    exit(-1);
   }
   auto input_path = batch_sampler_ptr_->InputPath();
   int index = 0;
@@ -276,13 +313,17 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
             ->PredictorResult();
     std::vector<std::vector<std::vector<cv::Point2f>>> dt_polys_list = {};
     for (auto& item : det_results) {
-      auto sort_item = sort_boxes_(item.dt_polys);
-      dt_polys_list.push_back(sort_item);
+      if (!item.dt_polys.empty()) {
+        auto sort_item = sort_boxes_(item.dt_polys);
+        dt_polys_list.push_back(sort_item);
+      } else {
+        dt_polys_list.push_back(std::vector<std::vector<cv::Point2f>>{});
+      }
     }
 
     std::vector<int> indices = {};
     for (int j = 0; j < doc_preprocessor_pipeline_images.size(); j++) {
-      if (!dt_polys_list[j].empty()) {
+      if (!dt_polys_list.empty() && !dt_polys_list[j].empty()) {
         indices.push_back(j);
       }
     }
@@ -307,6 +348,7 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
         if (!result_all_subs_of_img.ok()) {
           INFOE("Split image fail : ",
                 result_all_subs_of_img.status().ToString().c_str());
+          exit(-1);
         }
         all_subs_of_imgs.insert(all_subs_of_imgs.end(),
                                 result_all_subs_of_img.value().begin(),
@@ -330,6 +372,7 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
         if (!result_all_subs_of_imgs.ok()) {
           INFOE("Rotate images fail : %s",
                 result_all_subs_of_imgs.status().ToString().c_str());
+          exit(-1);
         }
         all_subs_of_imgs = result_all_subs_of_imgs.value();
       } else {
@@ -368,8 +411,8 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
         for (auto& item : sorted_subs_info) {
           sorted_subs_of_img.push_back(all_subs_of_img[item.first]);
         }
+        INFOW("rec infer coming");
         text_rec_model_->Predict(sorted_subs_of_img);
-        // cv::imwrite("num_1,.jpg", sorted_subs_of_img[0]);
         auto text_rec_model_results =
             static_cast<TextRecPredictor*>(text_rec_model_.get())
                 ->PredictorResult();
@@ -410,12 +453,14 @@ std::vector<std::unique_ptr<BaseCVResult>> OCRPipeline::Predict(
   auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
   if (!status.ok()) {
     INFOE("Set batch size fail : %s", status.ToString().c_str());
+    exit(-1);
   }
   auto infer_batch_data =
       batch_sampler_ptr_->SampleFromVectorToStringVector(input);
   if (!infer_batch_data.ok()) {
     INFOE("Get infer batch data fail : %s",
           infer_batch_data.status().ToString().c_str());
+    exit(-1);
   }
   std::vector<std::unique_ptr<BaseCVResult>> results = {};
   results.reserve(input_num);
@@ -424,6 +469,7 @@ std::vector<std::unique_ptr<BaseCVResult>> OCRPipeline::Predict(
         AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
     if (!status.ok()) {
       INFOE("Infer fail : %s", status.ToString().c_str());
+      exit(-1);
     }
   }
   for (int i = 0; i < infer_batch_data.value().size(); i++) {
@@ -431,6 +477,7 @@ std::vector<std::unique_ptr<BaseCVResult>> OCRPipeline::Predict(
     if (!infer_data_result.ok()) {
       INFOE("Get infer result fail : %s",
             infer_batch_data.status().ToString().c_str());
+      exit(-1);
     }
     results.insert(results.end(),
                    std::make_move_iterator(infer_data_result.value().begin()),
@@ -439,241 +486,265 @@ std::vector<std::unique_ptr<BaseCVResult>> OCRPipeline::Predict(
   return results;
 }
 
-
-
-void _OCRPipeline::OverrideConfig(){
+void _OCRPipeline::OverrideConfig() {
   auto& data = config_.Data();
-  if(!FLAGS_doc_orientation_classify_model_name.empty()){
+  if (params_.doc_orientation_classify_model_name.has_value()) {
     auto it = config_.FindKey("DocOrientationClassify.model_name");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.SubModules.DocOrientationClassify.model_name"] = FLAGS_doc_orientation_classify_model_name;
-    }else{
+    if (!it.ok()) {
+      data
+          ["SubPipelines.DocPreprocessor.SubModules.DocOrientationClassify."
+           "model_name"] = params_.doc_orientation_classify_model_name.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_doc_orientation_classify_model_name;
+      data[key] = params_.doc_orientation_classify_model_name.value();
     }
-  }  
-  if(!FLAGS_doc_orientation_classify_model_dir.empty()){
+  }
+  if (params_.doc_orientation_classify_model_dir.has_value()) {
     auto it = config_.FindKey("DocOrientationClassify.model_dir");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.SubModules.DocOrientationClassify.model_dir"] = FLAGS_doc_orientation_classify_model_dir;
-    }else{
+    if (!it.ok()) {
+      data
+          ["SubPipelines.DocPreprocessor.SubModules.DocOrientationClassify."
+           "model_dir"] = params_.doc_orientation_classify_model_dir.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_doc_orientation_classify_model_dir;
+      data[key] = params_.doc_orientation_classify_model_dir.value();
     }
   }
-  if(!FLAGS_doc_unwarping_model_name.empty()){
+  if (params_.doc_unwarping_model_name.has_value()) {
     auto it = config_.FindKey("DocUnwarping.model_name");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.SubModules.DocUnwarping.model_name"] = FLAGS_doc_unwarping_model_name;
-    }else{
+    if (!it.ok()) {
+      data["SubPipelines.DocPreprocessor.SubModules.DocUnwarping.model_name"] =
+          params_.doc_unwarping_model_name.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_doc_unwarping_model_name;
+      data[key] = params_.doc_unwarping_model_name.value();
     }
   }
-  if(!FLAGS_doc_unwarping_model_dir.empty()){
+  if (params_.doc_unwarping_model_dir.has_value()) {
     auto it = config_.FindKey("DocUnwarping.model_dir");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.SubModules.DocUnwarping.model_dir"] = FLAGS_doc_unwarping_model_dir;
-    }else{
+    if (!it.ok()) {
+      data["SubPipelines.DocPreprocessor.SubModules.DocUnwarping.model_dir"] =
+          params_.doc_unwarping_model_dir.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_doc_unwarping_model_dir;
+      data[key] = params_.doc_unwarping_model_dir.value();
     }
   }
-  if(!FLAGS_text_detection_model_name.empty()){
+  if (params_.text_detection_model_name.has_value()) {
     auto it = config_.FindKey("TextDetection.model_name");
-    if(!it.ok()){
-      data["SubModules.TextDetection.model_name"] = FLAGS_text_detection_model_name;
-    }else{
+    if (!it.ok()) {
+      data["SubModules.TextDetection.model_name"] =
+          params_.text_detection_model_name.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_detection_model_name;
+      data[key] = params_.text_detection_model_name.value();
     }
-  }    
-  if(!FLAGS_text_detection_model_dir.empty()){
+  }
+  if (params_.text_detection_model_dir.has_value()) {
     auto it = config_.FindKey("TextDetection.model_dir");
-    if(!it.ok()){
-      data["SubModules.TextDetection.model_dir"] = FLAGS_text_detection_model_dir;
-    }else{    
+    if (!it.ok()) {
+      data["SubModules.TextDetection.model_dir"] =
+          params_.text_detection_model_dir.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_detection_model_dir;
+      data[key] = params_.text_detection_model_dir.value();
     }
   }
-  if(!FLAGS_textline_orientation_model_name.empty()){
+  if (params_.textline_orientation_model_name.has_value()) {
     auto it = config_.FindKey("TextLineOrientation.model_name");
-    if(!it.ok()){
-      data["SubModules.TextLineOrientation.model_name"] = FLAGS_textline_orientation_model_name;
-    }else{       
+    if (!it.ok()) {
+      data["SubModules.TextLineOrientation.model_name"] =
+          params_.textline_orientation_model_name.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_textline_orientation_model_name;
+      data[key] = params_.textline_orientation_model_name.value();
     }
   }
-  if(!FLAGS_textline_orientation_model_dir.empty()){
+  if (params_.textline_orientation_model_dir.has_value()) {
     auto it = config_.FindKey("TextLineOrientation.model_dir");
-    if(!it.ok()){
-      data["SubModules.TextLineOrientation.model_dir"] = FLAGS_textline_orientation_model_dir;
-    }else{      
+    if (!it.ok()) {
+      data["SubModules.TextLineOrientation.model_dir"] =
+          params_.textline_orientation_model_dir.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_textline_orientation_model_dir;
+      data[key] = params_.textline_orientation_model_dir.value();
     }
   }
-  if(!FLAGS_textline_orientation_batch_size.empty()){
+  if (params_.textline_orientation_batch_size.has_value()) {
     auto it = config_.FindKey("TextLineOrientation.batch_size");
-    if(!it.ok()){
-      data["SubModules.TextLineOrientation.batch_size"] = FLAGS_textline_orientation_batch_size;
-    }else{      
+    if (!it.ok()) {
+      data["SubModules.TextLineOrientation.batch_size"] =
+          std::to_string(params_.textline_orientation_batch_size.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_textline_orientation_batch_size;
+      data[key] =
+          std::to_string(params_.textline_orientation_batch_size.value());
     }
-  }        
-  
-  if(!FLAGS_text_recognition_model_name.empty()){
+  }
+
+  if (params_.text_recognition_model_name.has_value()) {
     auto it = config_.FindKey("TextRecognition.model_name");
-    if(!it.ok()){
-      data["SubModules.TextRecognition.model_name"] = FLAGS_text_recognition_model_name;
-    }else{     
+    if (!it.ok()) {
+      data["SubModules.TextRecognition.model_name"] =
+          params_.text_recognition_model_name.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_recognition_model_name;
+      data[key] = params_.text_recognition_model_name.value();
     }
-  }    
-  if(!FLAGS_text_recognition_model_dir.empty()){
+  }
+  if (params_.text_recognition_model_dir.has_value()) {
     auto it = config_.FindKey("TextRecognition.model_dir");
-    if(!it.ok()){
-      data["SubModules.TextRecognition.model_dir"] = FLAGS_text_recognition_model_dir;
-    }else{         
+    if (!it.ok()) {
+      data["SubModules.TextRecognition.model_dir"] =
+          params_.text_recognition_model_dir.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_recognition_model_dir;
+      data[key] = params_.text_recognition_model_dir.value();
     }
-  }   
-  if(!FLAGS_text_recognition_batch_size.empty()){
+  }
+  if (params_.text_recognition_batch_size.has_value()) {
     auto it = config_.FindKey("TextRecognition.batch_size");
-    if(!it.ok()){
-      data["SubModules.TextRecognition.batch_size"] = FLAGS_text_recognition_batch_size;
-    }else{         
+    if (!it.ok()) {
+      data["SubModules.TextRecognition.batch_size"] =
+          std::to_string(params_.text_recognition_batch_size.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_recognition_batch_size;
+      data[key] = std::to_string(params_.text_recognition_batch_size.value());
     }
-  }    
+  }
 
-  if(!FLAGS_use_doc_orientation_classify.empty()){
+  if (params_.use_doc_orientation_classify.has_value()) {
     auto it = config_.FindKey("DocPreprocessor.use_doc_orientation_classify");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.use_doc_orientation_classify"] = FLAGS_use_doc_orientation_classify;
-    }else{        
+    if (!it.ok()) {
+      data["SubPipelines.DocPreprocessor.use_doc_orientation_classify"] =
+          params_.use_doc_orientation_classify.value() ? "true" : "false";
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_use_doc_orientation_classify;
+      data[key] =
+          params_.use_doc_orientation_classify.value() ? "true" : "false";
     }
-  }    
-  if(!FLAGS_use_doc_unwarping.empty()){
+  }
+  if (params_.use_doc_unwarping.has_value()) {
     auto it = config_.FindKey("DocPreprocessor.use_doc_unwarping");
-    if(!it.ok()){
-      data["SubPipelines.DocPreprocessor.use_doc_unwarping"] = FLAGS_use_doc_unwarping;
-    }else{     
+    if (!it.ok()) {
+      data["SubPipelines.DocPreprocessor.use_doc_unwarping"] =
+          params_.use_doc_unwarping.value() ? "true" : "false";
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_use_doc_unwarping;
+      data[key] = params_.use_doc_unwarping.value() ? "true" : "false";
     }
-  }    
-  if(!FLAGS_use_textline_orientation.empty()){
+  }
+  if (params_.use_textline_orientation.has_value()) {
     auto it = config_.FindKey("use_textline_orientation");
-    if(!it.ok()){
-      data["use_textline_orientation"] = FLAGS_use_textline_orientation;
-    }else{      
+    if (!it.ok()) {
+      data["use_textline_orientation"] =
+          params_.use_textline_orientation.value() ? "true" : "false";
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_use_textline_orientation;
+      data[key] = params_.use_textline_orientation.value() ? "true" : "false";
     }
-  }    
-  if(!FLAGS_text_det_limit_side_len.empty()){
+  }
+  if (params_.text_det_limit_side_len.has_value()) {
     auto it = config_.FindKey("TextDetection.limit_side_len");
-    if(!it.ok()){
-      data["SubModules.TextDetection.limit_side_len"] = FLAGS_text_det_limit_side_len;
-    }else{    
+    if (!it.ok()) {
+      data["SubModules.TextDetection.limit_side_len"] =
+          std::to_string(params_.text_det_limit_side_len.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_limit_side_len;
+      data[key] = std::to_string(params_.text_det_limit_side_len.value());
     }
-  }   
-  if(!FLAGS_text_det_limit_type.empty()){
+  }
+  if (params_.text_det_limit_type.has_value()) {
     auto it = config_.FindKey("TextDetection.limit_type");
-    if(!it.ok()){
-      data["SubModules.TextDetection.limit_type"] = FLAGS_text_det_limit_type;
-    }else{     
+    if (!it.ok()) {
+      data["SubModules.TextDetection.limit_type"] =
+          params_.text_det_limit_type.value();
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_limit_type;
+      data[key] = params_.text_det_limit_type.value();
     }
-  }    
-  if(!FLAGS_text_det_thresh.empty()){
+  }
+  if (params_.text_det_thresh.has_value()) {
     auto it = config_.FindKey("TextDetection.thresh");
-    if(!it.ok()){
-      data["SubModules.TextDetection.thresh"] = FLAGS_text_det_thresh;
-    }else{   
+    if (!it.ok()) {
+      data["SubModules.TextDetection.thresh"] =
+          std::to_string(params_.text_det_thresh.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_thresh;
+      data[key] = std::to_string(params_.text_det_thresh.value());
     }
-  } 
-  if(!FLAGS_text_det_box_thresh.empty()){
+  }
+  if (params_.text_det_box_thresh.has_value()) {
     auto it = config_.FindKey("TextDetection.box_thresh");
-    if(!it.ok()){
-      data["SubModules.TextDetection.box_thresh"] = FLAGS_text_det_box_thresh;
-    }else{      
+    if (!it.ok()) {
+      data["SubModules.TextDetection.box_thresh"] =
+          std::to_string(params_.text_det_box_thresh.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_box_thresh;
+      data[key] = std::to_string(params_.text_det_box_thresh.value());
     }
-  }    
-  if(!FLAGS_text_det_unclip_ratio.empty()){
+  }
+  if (params_.text_det_unclip_ratio.has_value()) {
     auto it = config_.FindKey("TextDetection.unclip_ratio");
-    if(!it.ok()){
-      data["SubModules.TextDetection.unclip_ratio"] = FLAGS_text_det_unclip_ratio;
-    }else{      
+    if (!it.ok()) {
+      data["SubModules.TextDetection.unclip_ratio"] =
+          std::to_string(params_.text_det_unclip_ratio.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_unclip_ratio;
+      data[key] = std::to_string(params_.text_det_unclip_ratio.value());
     }
-  }   
-  if(!FLAGS_text_det_input_shape.empty()){
+  }
+  if (params_.text_det_input_shape.has_value()) {
     auto it = config_.FindKey("TextDetection.input_shape");
-    if(!it.ok()){
-      data["SubModules.TextDetection.input_shape"] = FLAGS_text_det_input_shape;
-    }else{      
+    if (!it.ok()) {
+      data["SubModules.TextDetection.input_shape"] =
+          Utility::VecToString(params_.text_det_input_shape.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_det_input_shape;
+      data[key] = Utility::VecToString(params_.text_det_input_shape.value());
     }
-  }    
-  if(!FLAGS_text_rec_score_thresh.empty()){
+  }
+  if (params_.text_rec_score_thresh.has_value()) {
     auto it = config_.FindKey("TextRecognition.score_thresh");
-    if(!it.ok()){
-      data["SubModules.TextRecognition.score_thresh"] = FLAGS_text_rec_score_thresh;
-    }else{     
+    if (!it.ok()) {
+      data["SubModules.TextRecognition.score_thresh"] =
+          std::to_string(params_.text_rec_score_thresh.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_rec_score_thresh;
+      data[key] = std::to_string(params_.text_rec_score_thresh.value());
     }
-  }          
-  if(!FLAGS_text_rec_input_shape.empty()){
+  }
+  if (params_.text_rec_input_shape.has_value()) {
     auto it = config_.FindKey("TextRecognition.input_shape");
-    if(!it.ok()){
-      data["SubModules.TextRecognition.input_shape"] = FLAGS_text_rec_input_shape;
-    }else{     
+    if (!it.ok()) {
+      data["SubModules.TextRecognition.input_shape"] =
+          Utility::VecToString(params_.text_rec_input_shape.value());
+    } else {
       auto key = it.value().first;
       data.erase(data.find(key));
-      data[key]= FLAGS_text_rec_input_shape;
+      data[key] = Utility::VecToString(params_.text_rec_input_shape.value());
     }
-  }     
-
+  }
 }

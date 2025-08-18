@@ -21,12 +21,14 @@
 #include "src/common/processors.h"
 
 struct ClasPredictorParams {
-  std::string device = "cpu";
+  absl::optional<std::string> model_name = absl::nullopt;
+  absl::optional<std::string> model_dir = absl::nullopt;
+  absl::optional<std::string> device = absl::nullopt;
   std::string precision = "fp32";
-  bool enable_mkldnn = false;
+  bool enable_mkldnn = true;
+  int mkldnn_cache_capacity = 10;
+  int cpu_threads = 8;
   int batch_size = 1;
-  std::unordered_map<std::string, std::string> config = {};
-  int topk = 1;
 };
 
 struct ClasPredictorResult {
@@ -39,20 +41,11 @@ struct ClasPredictorResult {
 
 class ClasPredictor : public BasePredictor {
  public:
-  explicit ClasPredictor(
-      const std::string& model_dir, const std::string& device = "cpu",
-      const std::string& precision = "fp32", const bool enable_mkldnn = false,
-      int batch_size = 1,
-      const std::unordered_map<std::string, std::string>& config = {},
-
-      const int topk = 1);
-
-  explicit ClasPredictor(const std::string& model_dir,
-                         const ClasPredictorParams& params);
+  explicit ClasPredictor(const ClasPredictorParams& params);
 
   ClasPredictor() = delete;
 
-  void Build();
+  absl::Status Build();
 
   std::vector<std::unique_ptr<BaseCVResult>> Process(
       std::vector<cv::Mat>& batch_data) override;
@@ -66,12 +59,9 @@ class ClasPredictor : public BasePredictor {
   absl::Status BuildResize();
 
  private:
-  int topk_;
-
+  ClasPredictorParams params_;
   std::unordered_map<std::string, std::unique_ptr<Topk>> post_op_;
   std::vector<ClasPredictorResult> predictor_result_vec_;
   std::unique_ptr<PaddleInfer> infer_ptr_;
-
-  ClasPredictorParams params_;
   int input_index_ = 0;
 };

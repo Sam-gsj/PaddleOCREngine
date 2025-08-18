@@ -21,14 +21,16 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "src/base/base_pipeline.h"
 #include "src/common/image_batch_sampler.h"
 #include "src/common/processors.h"
 #include "src/modules/image_classification/predictor.h"
 #include "src/modules/text_detection/predictor.h"
-#include "src/modules/text_recogntion/predictor.h"
+#include "src/modules/text_recognition/predictor.h"
 #include "src/pipelines/doc_preprocessor/pipeline.h"
 #include "src/utils/ilogger.h"
+#include "src/utils/utility.h"
 
 struct TextDetParams {
   int text_det_limit_side_len = -1;
@@ -56,30 +58,46 @@ struct OCRPipelineResult {
 };
 
 struct OCRPipelineParams {
-  std::string device = "cpu";
+  absl::optional<std::string> doc_orientation_classify_model_name =
+      absl::nullopt;
+  absl::optional<std::string> doc_orientation_classify_model_dir =
+      absl::nullopt;
+  absl::optional<std::string> doc_unwarping_model_name = absl::nullopt;
+  absl::optional<std::string> doc_unwarping_model_dir = absl::nullopt;
+  absl::optional<std::string> text_detection_model_name = absl::nullopt;
+  absl::optional<std::string> text_detection_model_dir = absl::nullopt;
+  absl::optional<std::string> textline_orientation_model_name = absl::nullopt;
+  absl::optional<std::string> textline_orientation_model_dir = absl::nullopt;
+  absl::optional<int> textline_orientation_batch_size = absl::nullopt;
+  absl::optional<std::string> text_recognition_model_name = absl::nullopt;
+  absl::optional<std::string> text_recognition_model_dir = absl::nullopt;
+  absl::optional<int> text_recognition_batch_size = absl::nullopt;
+  absl::optional<bool> use_doc_orientation_classify = absl::nullopt;
+  absl::optional<bool> use_doc_unwarping = absl::nullopt;
+  absl::optional<bool> use_textline_orientation = absl::nullopt;
+  absl::optional<int> text_det_limit_side_len = absl::nullopt;
+  absl::optional<std::string> text_det_limit_type = absl::nullopt;
+  absl::optional<float> text_det_thresh = absl::nullopt;
+  absl::optional<float> text_det_box_thresh = absl::nullopt;
+  absl::optional<float> text_det_unclip_ratio = absl::nullopt;
+  absl::optional<std::vector<int>> text_det_input_shape = absl::nullopt;
+  absl::optional<float> text_rec_score_thresh = absl::nullopt;
+  absl::optional<std::vector<int>> text_rec_input_shape = absl::nullopt;
+  absl::optional<std::string> lang = absl::nullopt;
+  absl::optional<std::string> ocr_version = absl::nullopt;
+  absl::optional<std::string> vis_font_dir = absl::nullopt;
+  absl::optional<std::string> device = absl::nullopt;
+  bool enable_mkldnn = true;
+  int mkldnn_cache_capacity = 10;
   std::string precision = "fp32";
-  bool enable_mkldnn = false;
-  std::unordered_map<std::string, std::string> config = {};
-  // int textline_orientation_batch_size = 1;
-  // int text_recognition_batch_size = 1;
-  // bool use_doc_orientation_classify = true;
-  // bool use_doc_unwarping = true;
-  // bool use_textline_orientation = true;
-  // int text_det_limit_side_len = 64;
-  // std::string text_det_limit_type = "min";
-  // float text_det_thresh = 0.3;
-  // float text_det_box_thresh = 0.6;
-  // float text_det_unclip_ratio = 2.0;
-  // std::vector<int> text_det_input_shape = {};
-  // float text_rec_score_thresh = 0.0;
-  // std::vector<int> text_rec_input_shape = {};
-  // std::string lang = "";
+  int cpu_threads = 8;
+  int threads = 1;
+  absl::optional<Utility::PaddleXConfigVariant> paddlex_config = absl::nullopt;
 };
 
 class _OCRPipeline : public BasePipeline {
  public:
-  explicit _OCRPipeline(const std::string& model_dir,
-                        const OCRPipelineParams& params);
+  explicit _OCRPipeline(const OCRPipelineParams& params);
   virtual ~_OCRPipeline() = default;
   _OCRPipeline() = delete;
 
@@ -126,10 +144,9 @@ class OCRPipeline
           _OCRPipeline, OCRPipelineParams, std::vector<std::string>,
           std::vector<std::unique_ptr<BaseCVResult>>> {
  public:
-  OCRPipeline(const std::string& model_dir, const OCRPipelineParams& params,
-              int thread_num = 1)
-      : AutoParallelSimpleInferencePipeline(model_dir, params, thread_num),
-        thread_num_(thread_num){};
+  OCRPipeline(const OCRPipelineParams& params)
+      : AutoParallelSimpleInferencePipeline(params),
+        thread_num_(params.threads){};
 
   std::vector<std::unique_ptr<BaseCVResult>> Predict(
       const std::vector<std::string>& input) override;
