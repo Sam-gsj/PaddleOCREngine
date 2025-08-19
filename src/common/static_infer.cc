@@ -140,9 +140,7 @@ absl::StatusOr<std::vector<cv::Mat>> PaddleInfer::Apply(
     std::vector<int> input_shape(x[0].dims);
     for (int i = 0; i < x[0].dims; i++) {
       input_shape[i] = x[0].size[i];
-      // std::cout << input_shape[i]<<" ";
     }
-    // std::cout<<std::endl;
     input_handle->Reshape(input_shape);
     input_handle->CopyFromCpu<float>((float *)x[i].data);
   }
@@ -186,9 +184,7 @@ absl::Status PaddleInfer::CheckRunMode() {
     }
   }
   if (model_name_ == "LaTeX_OCR_rec" && option_.DeviceType() == "cpu") {
-    std::string vendor_id_raw = Utility::GetCpuVendor();
-    if (vendor_id_raw.find("GenuineIntel") != std::string::npos &&
-        option_.RunMode() != "mkldnn") {
+    if (Utility::IsMkldnnAvailable() && option_.RunMode() != "mkldnn") {
       INFOE(
           "Now, the `LaTeX_OCR_rec` model only support `mkldnn` mode when "
           "running on Intel CPU devices. So using `mkldnn` instead.");

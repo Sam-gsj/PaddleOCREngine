@@ -365,6 +365,8 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
         auto textline_orientation_model_results =
             static_cast<ClasPredictor*>(textline_orientation_model_.get())
                 ->PredictorResult();
+        cv::imwrite("textline_cpp.jpg",
+                    textline_orientation_model_results[0].input_image);
         for (auto& result_angle : textline_orientation_model_results) {
           angles.push_back(result_angle.class_ids[0]);
         }
@@ -411,7 +413,6 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
         for (auto& item : sorted_subs_info) {
           sorted_subs_of_img.push_back(all_subs_of_img[item.first]);
         }
-        INFOW("rec infer coming");
         text_rec_model_->Predict(sorted_subs_of_img);
         auto text_rec_model_results =
             static_cast<TextRecPredictor*>(text_rec_model_.get())
@@ -445,10 +446,17 @@ std::vector<std::unique_ptr<BaseCVResult>> _OCRPipeline::Predict(
 
 std::vector<std::unique_ptr<BaseCVResult>> OCRPipeline::Predict(
     const std::vector<std::string>& input) {
+  if (thread_num_ == 1) {
+    return infer_->Predict(input);
+  }
   batch_sampler_ptr_ =
       std::unique_ptr<BaseBatchSampler>(new ImageBatchSampler(1));
   auto nomeaning = batch_sampler_ptr_->Apply(input);
   int input_num = nomeaning.value().size();
+  if (thread_num_ > input_num) {
+    INFOW("thread num exceed input num, will set %d", input_num);
+    thread_num_ = input_num;
+  }
   int infer_batch_num = input_num / thread_num_;
   auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
   if (!status.ok()) {

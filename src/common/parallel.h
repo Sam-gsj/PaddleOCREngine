@@ -68,11 +68,13 @@ template <typename Pipeline, typename PipelineParams, typename PipelineInput,
 AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineInput,
                                     PipelineResult>::
     AutoParallelSimpleInferencePipeline(const PipelineParams& params)
-    : BasePipeline(), params_(params), thread_num_(params.threads) {
-  auto status = Init();
-  if (!status.ok()) {
-    INFOE("Pipeline pool init error : %s", status.ToString().c_str());
-    exit(-1);
+    : BasePipeline(), params_(params), thread_num_(params.thread_num) {
+  if (thread_num_ > 1) {
+    auto status = Init();
+    if (!status.ok()) {
+      INFOE("Pipeline pool init error : %s", status.ToString().c_str());
+      exit(-1);
+    }
   }
 }
 

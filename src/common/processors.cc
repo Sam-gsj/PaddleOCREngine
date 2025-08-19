@@ -669,6 +669,7 @@ absl::StatusOr<std::vector<cv::Mat>> CropByPolys::operator()(
         auto out = GetMinAreaRectCrop(img, poly);
         if (!out.ok()) return out.status();
         output_list.push_back(*out);
+        cv::imwrite("crop.jpg", output_list[0]);
       }
     } else if (box_type_ == DetBoxType::kPoly) {
       for (const auto& poly : dt_polys) {
@@ -713,7 +714,7 @@ absl::StatusOr<cv::Mat> CropByPolys::GetRotateCropImage(
   cv::warpPerspective(img, out, M, cv::Size((int)maxWidth, (int)maxHeight),
                       cv::INTER_CUBIC, cv::BORDER_REPLICATE);
   if (out.rows != 0 && 1.0 * out.rows / out.cols >= 1.5)
-    cv::rotate(out, out, cv::ROTATE_90_CLOCKWISE);
+    cv::rotate(out, out, cv::ROTATE_90_COUNTERCLOCKWISE);
   return out;
 }
 
