@@ -1,0 +1,2 @@
+/usr/bin/ar qc absl_strerror.a CMakeFiles/absl_strerror.dir/internal/strerror.cc.o
+/usr/bin/ranlib absl_strerror.a

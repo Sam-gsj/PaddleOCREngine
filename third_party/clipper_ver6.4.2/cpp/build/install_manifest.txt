@@ -1,5 +1,0 @@
-/usr/local/include/polyclipping/clipper.hpp
-/usr/local/lib/libpolyclipping.so.22.0.0
-/usr/local/lib/libpolyclipping.so.22
-/usr/local/lib/libpolyclipping.so
-/usr/local/share/pkgconfig/polyclipping.pc

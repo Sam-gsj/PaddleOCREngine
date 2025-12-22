@@ -19,7 +19,7 @@
 #include "src/modules/image_unwarping/predictor.h"
 
 _DocPreprocessorPipeline::_DocPreprocessorPipeline(
-    const DocPreprocessorPipelineParams& params)
+    const DocPreprocessorPipelineParams &params)
     : BasePipeline(), params_(params) {
   if (params.paddlex_config.has_value()) {
     if (params.paddlex_config.value().IsStr()) {
@@ -118,8 +118,9 @@ _DocPreprocessorPipeline::_DocPreprocessorPipeline(
       new ImageBatchSampler(result_batch.value()));
 };
 
-std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
-    const std::vector<std::string>& input) {
+template <typename T>
+std::vector<std::unique_ptr<BaseCVResult>>
+_DocPreprocessorPipeline::PredictImpl(const T &input) {
   auto model_setting = GetModelSettings();
   auto status = CheckModelSettingsVaild(model_setting);
   if (!status.ok()) {
@@ -139,19 +140,19 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
   std::vector<std::unique_ptr<BaseCVResult>> base_cv_result_ptr_vec = {};
   std::vector<DocPreprocessorPipelineResult> pipeline_result_vec = {};
   pipeline_result_vec_.clear();
-  for (auto& batch_data : batches.value()) {
+  for (auto &batch_data : batches.value()) {
     origin_image.reserve(batch_data.size());
-    for (const auto& mat : batch_data) {
+    for (const auto &mat : batch_data) {
       origin_image.push_back(mat.clone());
     }
     std::vector<int> angles = {};
     std::vector<cv::Mat> rotate_images = {};
     if (model_setting["use_doc_orientation_classify"]) {
       doc_ori_classify_model_->Predict(batch_data);
-      ClasPredictor* derived =
-          static_cast<ClasPredictor*>(doc_ori_classify_model_.get());
+      ClasPredictor *derived =
+          static_cast<ClasPredictor *>(doc_ori_classify_model_.get());
       std::vector<ClasPredictorResult> preds = derived->PredictorResult();
-      for (auto& pred : preds) {
+      for (auto &pred : preds) {
         auto result_angle = Utility::StringToInt(pred.label_names[0]);
         if (!result_angle.ok()) {
           INFOE("angle is invalid : %s",
@@ -175,11 +176,11 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
     std::vector<cv::Mat> output_imgs = {};
     if (model_setting["use_doc_unwarping"]) {
       doc_unwarping_model_->Predict(rotate_images);
-      WarpPredictor* derived =
-          static_cast<WarpPredictor*>(doc_unwarping_model_.get());
+      WarpPredictor *derived =
+          static_cast<WarpPredictor *>(doc_unwarping_model_.get());
       std::vector<WarpPredictorResult> preds = derived->PredictorResult();
-      for (auto& pred : preds) {
-        output_imgs.push_back(pred.doctr_img);  //***"RGB" "BGR"
+      for (auto &pred : preds) {
+        output_imgs.push_back(pred.doctr_img); //***"RGB" "BGR"
       }
     } else {
       output_imgs = rotate_images;
@@ -188,7 +189,9 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
     pipeline_result_vec.clear();
     for (int i = 0; i < output_imgs.size(); i++, index++) {
       DocPreprocessorPipelineResult pipeline_result;
-      pipeline_result.input_path = input_path[index];
+      if(std::is_same<std::vector<std::string>, T>::value){
+          pipeline_result.input_path = input_path[index];
+      }
       pipeline_result.input_image = origin_image[i];
       pipeline_result.model_settings = model_setting;
       pipeline_result.angle = angles[i];
@@ -200,7 +203,7 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
     pipeline_result_vec_.insert(pipeline_result_vec_.end(),
                                 pipeline_result_vec.begin(),
                                 pipeline_result_vec.end());
-    for (auto& pipeline_result : pipeline_result_vec) {
+    for (auto &pipeline_result : pipeline_result_vec) {
       std::unique_ptr<BaseCVResult> base_cv_result_ptr =
           std::unique_ptr<BaseCVResult>(
               new DocPreprocessorResult(pipeline_result));
@@ -209,6 +212,12 @@ std::vector<std::unique_ptr<BaseCVResult>> _DocPreprocessorPipeline::Predict(
   }
   return base_cv_result_ptr_vec;
 };
+
+template std::vector<std::unique_ptr<BaseCVResult>>
+_DocPreprocessorPipeline::PredictImpl(const std::vector<std::string> &input);
+
+template std::vector<std::unique_ptr<BaseCVResult>>
+_DocPreprocessorPipeline::PredictImpl(const std::vector<cv::Mat> &input);
 
 std::unordered_map<std::string, bool>
 _DocPreprocessorPipeline::GetModelSettings(
@@ -244,56 +253,69 @@ absl::Status _DocPreprocessorPipeline::CheckModelSettingsVaild(
   return absl::OkStatus();
 }
 
-std::vector<std::unique_ptr<BaseCVResult>> DocPreprocessorPipeline::Predict(
-    const std::vector<std::string>& input) {
-  batch_sampler_ptr_ =
-      std::unique_ptr<BaseBatchSampler>(new ImageBatchSampler(1));
-  auto nomeaning = batch_sampler_ptr_->Apply(input);
-  int input_num = nomeaning.value().size();
-  int infer_batch_num = input_num / thread_num_;
-  auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
-  if (!status.ok()) {
-    INFOE("Set batch size fail : %s", status.ToString().c_str());
-    exit(-1);
+template <typename T>
+std::vector<std::unique_ptr<BaseCVResult>>
+DocPreprocessorPipeline::PredictImpl(const T &input) {
+  if (thread_num_ == 1) {
+    return infer_->Predict(input);
   }
-  auto infer_batch_data =
-      batch_sampler_ptr_->SampleFromVectorToStringVector(input);
-  if (!infer_batch_data.ok()) {
-    INFOE("Get infer batch data fail : %s",
-          infer_batch_data.status().ToString().c_str());
-    exit(-1);
-  }
-  std::vector<std::unique_ptr<BaseCVResult>> results = {};
-  results.reserve(input_num);
-  for (auto& infer_data : infer_batch_data.value()) {
-    auto status =
-        AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
-    if (!status.ok()) {
-      INFOE("Infer fail : %s", status.ToString().c_str());
-      exit(-1);
-    }
-  }
-  for (int i = 0; i < infer_batch_data.value().size(); i++) {
-    auto infer_data_result = GetResult();
-    if (!infer_data_result.ok()) {
-      INFOE("Get infer result fail : %s",
-            infer_batch_data.status().ToString().c_str());
-      exit(-1);
-    }
-    results.insert(results.end(),
-                   std::make_move_iterator(infer_data_result.value().begin()),
-                   std::make_move_iterator(infer_data_result.value().end()));
-  }
-  return results;
+  // batch_sampler_ptr_ =
+  //     std::unique_ptr<BaseBatchSampler>(new ImageBatchSampler(1));
+  // auto nomeaning = batch_sampler_ptr_->Apply(input);
+  // int input_num = nomeaning.value().size();
+  // if (thread_num_ > input_num) {
+  //   INFOW("thread num exceed input num, will set %d", input_num);
+  //   thread_num_ = input_num;
+  // }
+  // int infer_batch_num = input_num / thread_num_;
+  // auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
+  // if (!status.ok()) {
+  //   INFOE("Set batch size fail : %s", status.ToString().c_str());
+  //   exit(-1);
+  // }
+  // auto infer_batch_data =
+  //     batch_sampler_ptr_->SampleFromVectorToStringVector(input);
+  // if (!infer_batch_data.ok()) {
+  //   INFOE("Get infer batch data fail : %s",
+  //         infer_batch_data.status().ToString().c_str());
+  //   exit(-1);
+  // }
+  // std::vector<std::unique_ptr<BaseCVResult>> results = {};
+  // results.reserve(input_num);
+  // for (auto &infer_data : infer_batch_data.value()) {
+  //   auto status =
+  //       AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
+  //   if (!status.ok()) {
+  //     INFOE("Infer fail : %s", status.ToString().c_str());
+  //     exit(-1);
+  //   }
+  // }
+  // for (int i = 0; i < infer_batch_data.value().size(); i++) {
+  //   auto infer_data_result = GetResult();
+  //   if (!infer_data_result.ok()) {
+  //     INFOE("Get infer result fail : %s",
+  //           infer_batch_data.status().ToString().c_str());
+  //     exit(-1);
+  //   }
+  //   results.insert(results.end(),
+  //                  std::make_move_iterator(infer_data_result.value().begin()),
+  //                  std::make_move_iterator(infer_data_result.value().end()));
+  // }
+  // return results;
 }
 
+template std::vector<std::unique_ptr<BaseCVResult>>
+DocPreprocessorPipeline::PredictImpl(const std::vector<std::string> &input);
+
+template std::vector<std::unique_ptr<BaseCVResult>>
+DocPreprocessorPipeline::PredictImpl(const std::vector<cv::Mat> &input);
+
 void _DocPreprocessorPipeline::OverrideConfig() {
-  auto& data = config_.Data();
+  auto &data = config_.Data();
   if (params_.doc_orientation_classify_model_name.has_value()) {
     auto it = config_.FindKey("DocOrientationClassify.model_name");
     if (!it.ok()) {
-      data
-          ["DocPreprocessor.SubModules.DocOrientationClassify."
+      data["DocPreprocessor.SubModules.DocOrientationClassify."
            "model_name"] = params_.doc_orientation_classify_model_name.value();
     } else {
       auto key = it.value().first;
@@ -304,8 +326,7 @@ void _DocPreprocessorPipeline::OverrideConfig() {
   if (params_.doc_orientation_classify_model_dir.has_value()) {
     auto it = config_.FindKey("DocOrientationClassify.model_dir");
     if (!it.ok()) {
-      data
-          ["DocPreprocessor.SubModules.DocOrientationClassify."
+      data["DocPreprocessor.SubModules.DocOrientationClassify."
            "model_dir"] = params_.doc_orientation_classify_model_dir.value();
     } else {
       auto key = it.value().first;

@@ -19,17 +19,13 @@
 #include "result.h"
 #include "src/common/image_batch_sampler.h"
 
-TextRecPredictor::TextRecPredictor(const TextRecPredictorParams& params)
+TextRecPredictor::TextRecPredictor(const TextRecPredictorParams &params)
     : BasePredictor(params.model_dir, params.model_name, params.device,
                     params.precision, params.enable_mkldnn,
                     params.mkldnn_cache_capacity, params.cpu_threads,
                     params.batch_size, "image"),
       params_(params) {
   auto status = CheckRecModelParams();
-  if (!status.ok()) {
-    INFOE("Rec model params is invaild : %s", status.ToString().c_str());
-    std::exit(-1);
-  }
   auto status_build = Build();
   if (!status_build.ok()) {
     INFOE("Build fail: %s", status_build.ToString().c_str());
@@ -38,12 +34,12 @@ TextRecPredictor::TextRecPredictor(const TextRecPredictorParams& params)
 };
 
 absl::Status TextRecPredictor::Build() {
-  const auto& pre_params = config_.PreProcessOpInfo();
-  Register<ReadImage>("Read", "BGR");  //******
+  const auto &pre_params = config_.PreProcessOpInfo();
+  Register<ReadImage>("Read", "BGR"); //******
   Register<OCRReisizeNormImg>("ReisizeNorm", params_.input_shape);
   Register<ToBatchUniform>("ToBatch");
   infer_ptr_ = CreateStaticInfer();
-  const auto& post_params = config_.PostProcessOpInfo();
+  const auto &post_params = config_.PostProcessOpInfo();
   post_op_["CTCLabelDecode"] = std::unique_ptr<CTCLabelDecode>(
       new CTCLabelDecode(YamlConfig::SmartParseVector(
                              post_params.at("PostProcess.character_dict"))
@@ -51,11 +47,11 @@ absl::Status TextRecPredictor::Build() {
   return absl::OkStatus();
 };
 
-std::vector<std::unique_ptr<BaseCVResult>> TextRecPredictor::Process(
-    std::vector<cv::Mat>& batch_data) {
+std::vector<std::unique_ptr<BaseCVResult>>
+TextRecPredictor::Process(std::vector<cv::Mat> &batch_data) {
   std::vector<cv::Mat> origin_image = {};
   origin_image.reserve(batch_data.size());
-  for (const auto& mat : batch_data) {
+  for (const auto &mat : batch_data) {
     origin_image.push_back(mat.clone());
   }
   auto batch_read = pre_op_.at("Read")->Apply(batch_data);
@@ -93,7 +89,8 @@ std::vector<std::unique_ptr<BaseCVResult>> TextRecPredictor::Process(
   for (int i = 0; i < ctc_result.value().size(); i++, input_index_++) {
     TextRecPredictorResult predictor_result;
     if (!input_path_.empty()) {
-      if (input_index_ == input_path_.size()) input_index_ = 0;
+      if (input_index_ == input_path_.size())
+        input_index_ = 0;
       predictor_result.input_path = input_path_[input_index_];
     }
     predictor_result.input_image = origin_image[i];
@@ -111,7 +108,7 @@ absl::Status TextRecPredictor::CheckRecModelParams() {
   auto result_models_check = Utility::GetOcrModelInfo(
       params_.lang.value_or(""), params_.ocr_version.value_or(""));
   if (!result_models_check.ok()) {
-    return absl::InvalidArgumentError("lang and ocr_version is invaild : " +
+    return absl::InvalidArgumentError("lang and ocr_version is invalid : " +
                                       result_models_check.status().ToString());
   }
   auto result_model_name = ModelName();

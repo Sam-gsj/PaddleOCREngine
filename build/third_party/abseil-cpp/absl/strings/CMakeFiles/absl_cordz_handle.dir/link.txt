@@ -1,0 +1,2 @@
+/usr/bin/ar qc absl_cordz_handle.a CMakeFiles/absl_cordz_handle.dir/internal/cordz_handle.cc.o
+/usr/bin/ranlib absl_cordz_handle.a
