@@ -1,2 +1,0 @@
-/usr/bin/ar qc absl_bad_variant_access.a CMakeFiles/absl_bad_variant_access.dir/bad_variant_access.cc.o
-/usr/bin/ranlib absl_bad_variant_access.a
