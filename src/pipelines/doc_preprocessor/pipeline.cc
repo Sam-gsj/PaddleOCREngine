@@ -259,49 +259,49 @@ DocPreprocessorPipeline::PredictImpl(const T &input) {
   if (thread_num_ == 1) {
     return infer_->Predict(input);
   }
-  // batch_sampler_ptr_ =
-  //     std::unique_ptr<BaseBatchSampler>(new ImageBatchSampler(1));
-  // auto nomeaning = batch_sampler_ptr_->Apply(input);
-  // int input_num = nomeaning.value().size();
-  // if (thread_num_ > input_num) {
-  //   INFOW("thread num exceed input num, will set %d", input_num);
-  //   thread_num_ = input_num;
-  // }
-  // int infer_batch_num = input_num / thread_num_;
-  // auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
-  // if (!status.ok()) {
-  //   INFOE("Set batch size fail : %s", status.ToString().c_str());
-  //   exit(-1);
-  // }
-  // auto infer_batch_data =
-  //     batch_sampler_ptr_->SampleFromVectorToStringVector(input);
-  // if (!infer_batch_data.ok()) {
-  //   INFOE("Get infer batch data fail : %s",
-  //         infer_batch_data.status().ToString().c_str());
-  //   exit(-1);
-  // }
-  // std::vector<std::unique_ptr<BaseCVResult>> results = {};
-  // results.reserve(input_num);
-  // for (auto &infer_data : infer_batch_data.value()) {
-  //   auto status =
-  //       AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
-  //   if (!status.ok()) {
-  //     INFOE("Infer fail : %s", status.ToString().c_str());
-  //     exit(-1);
-  //   }
-  // }
-  // for (int i = 0; i < infer_batch_data.value().size(); i++) {
-  //   auto infer_data_result = GetResult();
-  //   if (!infer_data_result.ok()) {
-  //     INFOE("Get infer result fail : %s",
-  //           infer_batch_data.status().ToString().c_str());
-  //     exit(-1);
-  //   }
-  //   results.insert(results.end(),
-  //                  std::make_move_iterator(infer_data_result.value().begin()),
-  //                  std::make_move_iterator(infer_data_result.value().end()));
-  // }
-  // return results;
+  batch_sampler_ptr_ =
+      std::unique_ptr<BaseBatchSampler>(new ImageBatchSampler(1));
+  auto nomeaning = batch_sampler_ptr_->Apply(input);
+  int input_num = nomeaning.value().size();
+  if (thread_num_ > input_num) {
+    INFOW("thread num exceed input num, will set %d", input_num);
+    thread_num_ = input_num;
+  }
+  int infer_batch_num = input_num / thread_num_;
+  auto status = batch_sampler_ptr_->SetBatchSize(infer_batch_num);
+  if (!status.ok()) {
+    INFOE("Set batch size fail : %s", status.ToString().c_str());
+    exit(-1);
+  }
+  auto infer_batch_data =
+      batch_sampler_ptr_->Apply(input);
+  if (!infer_batch_data.ok()) {
+    INFOE("Get infer batch data fail : %s",
+          infer_batch_data.status().ToString().c_str());
+    exit(-1);
+  }
+  std::vector<std::unique_ptr<BaseCVResult>> results = {};
+  results.reserve(input_num);
+  for (auto &infer_data : infer_batch_data.value()) {
+    auto status =
+        AutoParallelSimpleInferencePipeline::PredictThread(infer_data);
+    if (!status.ok()) {
+      INFOE("Infer fail : %s", status.ToString().c_str());
+      exit(-1);
+    }
+  }
+  for (int i = 0; i < infer_batch_data.value().size(); i++) {
+    auto infer_data_result = GetResult();
+    if (!infer_data_result.ok()) {
+      INFOE("Get infer result fail : %s",
+            infer_batch_data.status().ToString().c_str());
+      exit(-1);
+    }
+    results.insert(results.end(),
+                   std::make_move_iterator(infer_data_result.value().begin()),
+                   std::make_move_iterator(infer_data_result.value().end()));
+  }
+  return results;
 }
 
 template std::vector<std::unique_ptr<BaseCVResult>>

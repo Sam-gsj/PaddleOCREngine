@@ -39,13 +39,6 @@ public:
   DocPreprocessor(
       const DocPreprocessorParams &params = DocPreprocessorParams());
 
-  // std::vector<std::unique_ptr<BaseCVResult>> Predict(const std::string &input) {
-  //   std::vector<std::string> inputs = {input};
-  //   return Predict(inputs);
-  // };
-
-  // std::vector<std::unique_ptr<BaseCVResult>>
-  // Predict(const std::vector<std::string> &input);
 
   template <typename T>
   std::vector<std::unique_ptr<BaseCVResult>> Predict(const T &input) {

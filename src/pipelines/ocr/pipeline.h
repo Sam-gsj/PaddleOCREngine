@@ -152,8 +152,7 @@ private:
 
 class OCRPipeline
     : public AutoParallelSimpleInferencePipeline<
-          _OCRPipeline, OCRPipelineParams, std::vector<std::string>,
-          std::vector<std::unique_ptr<BaseCVResult>>> {
+          _OCRPipeline, OCRPipelineParams, std::vector<std::unique_ptr<BaseCVResult>>> {
 public:
   OCRPipeline(const OCRPipelineParams &params)
       : AutoParallelSimpleInferencePipeline(params),

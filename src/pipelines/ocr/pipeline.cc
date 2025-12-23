@@ -486,7 +486,7 @@ OCRPipeline::PredictImpl(const T &input) {
     exit(-1);
   }
   auto infer_batch_data =
-      batch_sampler_ptr_->SampleFromVectorToStringVector(input);
+      batch_sampler_ptr_->Apply(input);
   if (!infer_batch_data.ok()) {
     INFOE("Get infer batch data fail : %s",
           infer_batch_data.status().ToString().c_str());

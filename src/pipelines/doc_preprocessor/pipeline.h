@@ -105,7 +105,6 @@ private:
 class DocPreprocessorPipeline
     : public AutoParallelSimpleInferencePipeline<
           _DocPreprocessorPipeline, DocPreprocessorPipelineParams,
-          std::vector<std::string>,
           std::vector<std::unique_ptr<BaseCVResult>>> {
 public:
   DocPreprocessorPipeline(const DocPreprocessorPipelineParams &params)
