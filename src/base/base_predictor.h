@@ -24,7 +24,7 @@
 #include "absl/types/optional.h"
 #include "base_batch_sampler.h"
 #include "base_cv_result.h"
-#include "src/common/static_infer.h"
+#include "src/runtime/paddle_infer.h"
 #include "src/utils/func_register.h"
 #include "src/utils/pp_option.h"
 #include "src/utils/yaml_config.h"

@@ -1,4 +1,5 @@
 // Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 badguy Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +24,9 @@
 #include "paddle_inference_api.h"
 #include "src/utils/ilogger.h"
 #include "src/utils/pp_option.h"
-class PaddleInfer {
+#include "src/base/base_infer.h"
+
+class PaddleInfer : public BaseInfer{
 public:
   explicit PaddleInfer(const std::string &model_name,
                        const std::string &model_dir,
@@ -31,7 +34,7 @@ public:
                        const PaddlePredictorOption &option);
   ~PaddleInfer() = default;
   absl::StatusOr<std::vector<cv::Mat>>
-  Apply(const std::vector<cv::Mat> &x); //***********
+  Apply(const std::vector<cv::Mat> &x) override; //***********
 
 private:
   std::string model_dir_;
