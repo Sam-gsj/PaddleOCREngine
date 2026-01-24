@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#ifdef USE_PADDLE
 #include "paddle_infer.h"
 
 #include <fstream>
@@ -196,3 +196,4 @@ absl::Status PaddleInfer::CheckRunMode() {
 
   return absl::OkStatus();
 };
+#endif
