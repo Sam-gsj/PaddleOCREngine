@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef USE_NCNN
+#ifdef USE_ONNX
 #pragma once
 
 #include "src/base/base_infer.h"
@@ -20,43 +20,40 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-// NCNN核心头文件
-#include <ncnn/allocator.h>
-#include <ncnn/mat.h>
-#include <ncnn/net.h>
+// ONNX Runtime C++ API
+#include <onnxruntime_cxx_api.h>
 
-class NCNNInfer : public BaseInfer {
+class ONNXInfer : public BaseInfer {
 public:
-  explicit NCNNInfer(const std::string &model_name,
+  explicit ONNXInfer(const std::string &model_name,
                      const std::string &model_dir,
                      const PaddlePredictorOption &option);
-  ~NCNNInfer() override;
+  ~ONNXInfer() override;
 
   absl::StatusOr<std::vector<cv::Mat>>
   Apply(const std::vector<cv::Mat> &x) override;
 
 private:
-  bool Init(const std::string &param_path, const std::string &bin_path);
+  bool Init(const std::string &onnx_path);
 
-  void InitBlobs();
+  void InitNodes();
 
 private:
   PaddlePredictorOption option_;
 
-  std::unique_ptr<ncnn::Net> net_;
+  std::shared_ptr<Ort::Env> env_;
+  std::shared_ptr<Ort::Session> session_;
+  std::unique_ptr<Ort::AllocatorWithDefaultOptions> allocator_;
 
-  struct BlobInfo {
-    std::string name;
-    int w = 0, h = 0, c = 0;
-    bool is_input = false;
-  };
+  std::vector<std::string> input_node_names_;
+  std::vector<const char *> input_node_names_ptr_;
 
-  std::vector<BlobInfo> blobs_;
-  std::vector<BlobInfo *> input_blobs_;
-  std::vector<BlobInfo *> output_blobs_;
+  std::vector<std::string> output_node_names_;
+  std::vector<const char *> output_node_names_ptr_;
+
+  std::shared_ptr<Ort::MemoryInfo> memory_info_;
 };
 
-#endif
+#endif // USE_ONNX

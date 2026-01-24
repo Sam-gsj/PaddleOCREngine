@@ -35,7 +35,7 @@ public:
   explicit TensorRTInfer(const std::string &model_name,
                          const std::string &model_dir,
                          const PaddlePredictorOption &option);
-  ~TensorRTInfer() = default;
+  ~TensorRTInfer() override;
 
   absl::StatusOr<std::vector<cv::Mat>>
   Apply(const std::vector<cv::Mat> &x) override;

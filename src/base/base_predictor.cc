@@ -21,6 +21,7 @@
 #include "base_batch_sampler.h"
 #include "src/common/image_batch_sampler.h"
 #include "src/runtime/ncnn_infer.h"
+#include "src/runtime/onnx_infer.h"
 #include "src/runtime/paddle_infer.h"
 #include "src/runtime/tensorrt_infer.h"
 #include "src/utils/ilogger.h"
@@ -168,6 +169,9 @@ BasePredictor::CreateStaticInfer(const std::string &backend) {
   } else if (backend == "ncnn") {
     return std::unique_ptr<BaseInfer>(
         new NCNNInfer(model_name_, model_dir_.value(), PPOption()));
+  } else if (backend == "onnx") {
+    return std::unique_ptr<BaseInfer>(
+        new ONNXInfer(model_name_, model_dir_.value(), PPOption()));
   }
   return std::unique_ptr<BaseInfer>(new PaddleInfer(
       model_name_, model_dir_.value(), MODEL_FILE_PREFIX, PPOption()));
