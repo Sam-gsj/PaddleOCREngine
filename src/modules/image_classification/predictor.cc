@@ -68,7 +68,7 @@ absl::Status ClasPredictor::Build() {
   Register<ToCHWImage>("ToCHW");
   Register<ToBatch>("ToBatch");
 
-  infer_ptr_ = CreateStaticInfer();
+  infer_ptr_ = CreateStaticInfer(params_.backend);
   const auto &post_params = config_.PostProcessOpInfo();
   auto gsj = YamlConfig::SmartParseVector(
       post_params.at("PostProcess.Topk.label_list"));

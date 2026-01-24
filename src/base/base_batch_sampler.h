@@ -52,7 +52,7 @@ public:
 
   absl::StatusOr<std::vector<std::vector<std::string>>>
   SampleFromStringToStringVector(const std::string &input);
-  
+
   absl::StatusOr<std::vector<std::vector<std::string>>>
   SampleFromVectorToStringVector(const std::vector<std::string> &input);
 

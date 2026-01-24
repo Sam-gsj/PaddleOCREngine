@@ -38,14 +38,13 @@ public:
   std::vector<std::unique_ptr<BaseCVResult>> Predict(const cv::Mat &input) {
     std::vector<cv::Mat> inputs = {input};
     return Predict(inputs);
-  }  
+  }
 
   virtual std::vector<std::unique_ptr<BaseCVResult>>
   Predict(const std::vector<std::string> &input) = 0;
 
   virtual std::vector<std::unique_ptr<BaseCVResult>>
   Predict(const std::vector<cv::Mat> &input) = 0;
-
 
   template <typename T, typename... Args>
   std::unique_ptr<BasePredictor> CreateModule(Args &&...args);

@@ -24,8 +24,9 @@
 #include "absl/types/optional.h"
 #include "base_batch_sampler.h"
 #include "base_cv_result.h"
-#include "src/runtime/paddle_infer.h"
+#include "src/base/base_infer.h"
 #include "src/utils/func_register.h"
+#include "src/utils/ilogger.h"
 #include "src/utils/pp_option.h"
 #include "src/utils/yaml_config.h"
 
@@ -44,7 +45,7 @@ public:
   template <typename T>
   std::vector<std::unique_ptr<BaseCVResult>> Predict(const T &input);
 
-  std::unique_ptr<PaddleInfer> CreateStaticInfer();
+  std::unique_ptr<BaseInfer> CreateStaticInfer(const std::string &backend);
 
   const PaddlePredictorOption &PPOption();
   absl::StatusOr<std::string> ModelName() { return model_name_; };

@@ -75,6 +75,7 @@ _DocPreprocessorPipeline::_DocPreprocessorPipeline(
         params_.mkldnn_cache_capacity;
     doc_ori_classify_params.cpu_threads = params_.cpu_threads;
     doc_ori_classify_params.batch_size = result_batch.value();
+    doc_ori_classify_params.backend = params_.backend;
 
     doc_ori_classify_model_ =
         CreateModule<ClasPredictor>(doc_ori_classify_params);
@@ -110,6 +111,7 @@ _DocPreprocessorPipeline::_DocPreprocessorPipeline(
     doc_unwarping_params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
     doc_unwarping_params.cpu_threads = params_.cpu_threads;
     doc_unwarping_params.batch_size = result_batch.value();
+    doc_unwarping_params.backend = params_.backend;
 
     doc_unwarping_model_ = CreateModule<WarpPredictor>(doc_unwarping_params);
   }
@@ -189,8 +191,8 @@ _DocPreprocessorPipeline::PredictImpl(const T &input) {
     pipeline_result_vec.clear();
     for (int i = 0; i < output_imgs.size(); i++, index++) {
       DocPreprocessorPipelineResult pipeline_result;
-      if(std::is_same<std::vector<std::string>, T>::value){
-          pipeline_result.input_path = input_path[index];
+      if (std::is_same<std::vector<std::string>, T>::value) {
+        pipeline_result.input_path = input_path[index];
       }
       pipeline_result.input_image = origin_image[i];
       pipeline_result.model_settings = model_setting;
@@ -273,8 +275,7 @@ DocPreprocessorPipeline::PredictImpl(const T &input) {
     INFOE("Set batch size fail : %s", status.ToString().c_str());
     exit(-1);
   }
-  auto infer_batch_data =
-      batch_sampler_ptr_->Apply(input);
+  auto infer_batch_data = batch_sampler_ptr_->Apply(input);
   if (!infer_batch_data.ok()) {
     INFOE("Get infer batch data fail : %s",
           infer_batch_data.status().ToString().c_str());

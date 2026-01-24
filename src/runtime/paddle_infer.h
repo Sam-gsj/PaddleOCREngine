@@ -22,11 +22,11 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "paddle_inference_api.h"
+#include "src/base/base_infer.h"
 #include "src/utils/ilogger.h"
 #include "src/utils/pp_option.h"
-#include "src/base/base_infer.h"
 
-class PaddleInfer : public BaseInfer{
+class PaddleInfer : public BaseInfer {
 public:
   explicit PaddleInfer(const std::string &model_name,
                        const std::string &model_dir,

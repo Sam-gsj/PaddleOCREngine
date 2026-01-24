@@ -386,9 +386,9 @@ void OCRResult::SaveToJson(const std::string &save_path) const {
   absl::StatusOr<std::string> full_path;
   if (pipeline_result_.input_path.empty()) {
     INFOW("Input path is empty, will use random_name instead!");
-    
   }
-  full_path = Utility::SmartCreateDirectoryForJson(save_path, pipeline_result_.input_path);
+  full_path = Utility::SmartCreateDirectoryForJson(save_path,
+                                                   pipeline_result_.input_path);
 
   if (!full_path.ok()) {
     INFOE(full_path.status().ToString().c_str());

@@ -17,6 +17,7 @@
 #include "processors.h"
 #include "src/base/base_batch_sampler.h"
 #include "src/base/base_cv_result.h"
+#include "src/base/base_infer.h"
 #include "src/base/base_predictor.h"
 #include "src/common/processors.h"
 
@@ -29,6 +30,7 @@ struct WarpPredictorParams {
   int mkldnn_cache_capacity = 10;
   int cpu_threads = 8;
   int batch_size = 1;
+  std::string backend = "paddle";
 };
 
 struct WarpPredictorResult {
@@ -55,7 +57,7 @@ public:
 private:
   std::unordered_map<std::string, std::unique_ptr<DocTrPostProcess>> post_op_;
   std::vector<WarpPredictorResult> predictor_result_vec_;
-  std::unique_ptr<PaddleInfer> infer_ptr_;
+  std::unique_ptr<BaseInfer> infer_ptr_;
   WarpPredictorParams params_;
   int input_index_ = 0;
 };

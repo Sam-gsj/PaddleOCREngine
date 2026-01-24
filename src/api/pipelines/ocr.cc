@@ -93,5 +93,6 @@ OCRPipelineParams PaddleOCR::ToOCRPipelineParams(const PaddleOCRParams &from) {
   COPY_PARAMS(cpu_threads)
   COPY_PARAMS(thread_num)
   COPY_PARAMS(paddlex_config)
+  COPY_PARAMS(backend)
   return to;
 }

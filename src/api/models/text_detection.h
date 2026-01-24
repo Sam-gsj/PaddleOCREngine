@@ -32,6 +32,7 @@ struct TextDetectionParams {
   absl::optional<float> box_thresh = absl::nullopt;
   absl::optional<float> unclip_ratio = absl::nullopt;
   absl::optional<std::vector<int>> input_shape = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class TextDetection {

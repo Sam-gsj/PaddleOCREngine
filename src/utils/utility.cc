@@ -373,9 +373,9 @@ Utility::SmartCreateDirectoryForImage(std::string save_path,
     if (file_path.empty()) {
       std::time_t now = std::time(nullptr);
       std::string timestamp = std::to_string(now);
-      std::string random_str = std::to_string(rand() % 1000); 
-      file_path = "default_" + timestamp + "_" + random_str + ".png";  
-    } 
+      std::string random_str = std::to_string(rand() % 1000);
+      file_path = "default_" + timestamp + "_" + random_str + ".png";
+    }
     size_t pos = file_path.find_last_of("/\\");
     std::string file_name =
         (pos == std::string::npos) ? file_path : file_path.substr(pos + 1);
@@ -613,6 +613,47 @@ Utility::GetOcrModelInfo(std::string lang, std::string ppocr_version) {
   }
 
   return std::make_tuple(det_model_name, rec_model_name, font_name);
+}
+
+absl::StatusOr<std::string>
+Utility::FindFileWithSuffix(const std::string &dir, const std::string &suffix) {
+  DIR *dp = opendir(dir.c_str());
+  if (dp == NULL) {
+    return absl::NotFoundError("Directory not found or cannot be opened: " +
+                               dir);
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(dp)) != NULL) {
+    std::string name = entry->d_name;
+    // 跳过当前目录和父目录
+    if (name == "." || name == "..") {
+      continue;
+    }
+
+    if (name.length() >= suffix.length()) {
+      if (name.compare(name.length() - suffix.length(), suffix.length(),
+                       suffix) == 0) {
+
+        // 构建完整路径
+        std::string full_path;
+        if (!dir.empty() && dir.back() == PATH_SEPARATOR) {
+          full_path = dir + name;
+        } else {
+          full_path = dir + PATH_SEPARATOR + name;
+        }
+
+        if (!Utility::IsDirectory(full_path)) {
+          closedir(dp);
+          return full_path; // 找到第一个即返回
+        }
+      }
+    }
+  }
+
+  closedir(dp);
+  return absl::NotFoundError("No file found with suffix '" + suffix + "' in " +
+                             dir);
 }
 const std::set<std::string> Utility::kImgSuffixes = {"jpg", "png", "jpeg",
                                                      "bmp"};

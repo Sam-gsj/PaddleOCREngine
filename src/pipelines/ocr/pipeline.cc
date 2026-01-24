@@ -69,6 +69,7 @@ _OCRPipeline::_OCRPipeline(const OCRPipelineParams &params)
     params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
     params.cpu_threads = params_.cpu_threads;
     params.paddlex_config = result_doc_preprocessor_config.value();
+    params.backend = params_.backend;
     doc_preprocessors_pipeline_ =
         CreatePipeline<_DocPreprocessorPipeline>(params);
 
@@ -93,6 +94,7 @@ _OCRPipeline::_OCRPipeline(const OCRPipelineParams &params)
     params.enable_mkldnn = params_.enable_mkldnn;
     params.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
     params.cpu_threads = params_.cpu_threads;
+    params.backend = params_.backend;
     auto result_batch_size =
         config_.GetInt("TextLineOrientation.batch_size", 1);
     if (!result_batch_size.ok()) {
@@ -152,6 +154,7 @@ _OCRPipeline::_OCRPipeline(const OCRPipelineParams &params)
   params_det.mkldnn_cache_capacity = params_.mkldnn_cache_capacity;
   params_det.cpu_threads = params_.cpu_threads;
   params_det.batch_size = config_.GetInt("TextDetection.batch_size", 1).value();
+  params_det.backend = params_.backend;
   if (text_type_ == "general") {
     params_det.limit_side_len =
         config_.GetInt("TextDetection.limit_side_len", 960).value();
@@ -226,6 +229,7 @@ _OCRPipeline::_OCRPipeline(const OCRPipelineParams &params)
   params_rec.cpu_threads = params_.cpu_threads;
   params_rec.batch_size =
       config_.GetInt("TextRecognition.batch_size", 1).value();
+  params_rec.backend = params_.backend;
 
   text_rec_model_ = CreateModule<TextRecPredictor>(params_rec);
   text_rec_score_thresh_ =
@@ -344,8 +348,8 @@ _OCRPipeline::PredictImpl(const T &input) {
     std::vector<OCRPipelineResult> results(
         doc_preprocessor_pipeline_images.size());
     for (int k = 0; k < results.size(); k++, index++) {
-      if(std::is_same<std::vector<std::string>, T>::value){
-          results[k].input_path = input_path[index];
+      if (std::is_same<std::vector<std::string>, T>::value) {
+        results[k].input_path = input_path[index];
       }
       results[k].doc_preprocessor_res = doc_preprocessors_pipeline_results[k];
       results[k].dt_polys = dt_polys_list[k];
@@ -485,8 +489,7 @@ OCRPipeline::PredictImpl(const T &input) {
     INFOE("Set batch size fail : %s", status.ToString().c_str());
     exit(-1);
   }
-  auto infer_batch_data =
-      batch_sampler_ptr_->Apply(input);
+  auto infer_batch_data = batch_sampler_ptr_->Apply(input);
   if (!infer_batch_data.ok()) {
     INFOE("Get infer batch data fail : %s",
           infer_batch_data.status().ToString().c_str());

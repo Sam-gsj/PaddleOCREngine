@@ -16,6 +16,7 @@
 
 #include "result.h"
 #include "src/common/image_batch_sampler.h"
+#include "src/utils/ilogger.h"
 
 WarpPredictor::WarpPredictor(const WarpPredictorParams &params)
     : BasePredictor(params.model_dir, params.model_name, params.device,
@@ -37,7 +38,7 @@ absl::Status WarpPredictor::Build() {
   Register<ToCHWImage>("ToCHW");
   Register<ToBatch>("ToBatch");
 
-  infer_ptr_ = CreateStaticInfer();
+  infer_ptr_ = CreateStaticInfer(params_.backend);
   const auto &post_params = config_.PostProcessOpInfo();
   post_op_["DocTr"] = std::unique_ptr<DocTrPostProcess>(new DocTrPostProcess());
   return absl::OkStatus();

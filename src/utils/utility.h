@@ -118,4 +118,6 @@ public:
 
   static absl::StatusOr<std::tuple<std::string, std::string, std::string>>
   GetOcrModelInfo(std::string lang, std::string ppocr_version);
+  static absl::StatusOr<std::string>
+  FindFileWithSuffix(const std::string &dir, const std::string &suffix);
 };

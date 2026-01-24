@@ -24,6 +24,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "src/base/base_pipeline.h"
+#include "src/utils/ilogger.h"
 #include "thread_pool.h"
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
@@ -77,8 +78,8 @@ AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::
 }
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
-absl::Status
-AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::Init() {
+absl::Status AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams,
+                                                 PipelineResult>::Init() {
   try {
     pool_ = std::unique_ptr<PaddlePool::ThreadPool>(
         new PaddlePool::ThreadPool(thread_num_));
@@ -103,9 +104,10 @@ AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::I
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
 template <typename PipelineInput>
-std::future<PipelineResult> AutoParallelSimpleInferencePipeline<
-    Pipeline, PipelineParams, PipelineResult>::PredictAsync(const PipelineInput &input) {
-      
+std::future<PipelineResult>
+AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::
+    PredictAsync(const PipelineInput &input) {
+
   int instance_id = round_robin_index_.fetch_add(1) % thread_num_;
   auto &instance = instances_[instance_id];
 
@@ -114,8 +116,9 @@ std::future<PipelineResult> AutoParallelSimpleInferencePipeline<
 
   auto task = [this, instance_id, input, promise]() {
     try {
-      // auto* base_pipeline_ptr = this->instances_[instance_id]->pipeline.get();
-      // auto* concrete_pipeline = static_cast<Pipeline*>(base_pipeline_ptr);
+      // auto* base_pipeline_ptr =
+      // this->instances_[instance_id]->pipeline.get(); auto* concrete_pipeline
+      // = static_cast<Pipeline*>(base_pipeline_ptr);
 
       auto result = this->instances_[instance_id]->pipeline->Predict(input);
 
@@ -133,7 +136,8 @@ std::future<PipelineResult> AutoParallelSimpleInferencePipeline<
 
   bool expected = false;
   if (instance->is_busy.compare_exchange_strong(expected, true)) {
-    pool_->submit([this, instance_id]() { this->ProcessInstanceTasks(instance_id); });
+    pool_->submit(
+        [this, instance_id]() { this->ProcessInstanceTasks(instance_id); });
   }
 
   return future;
@@ -141,7 +145,8 @@ std::future<PipelineResult> AutoParallelSimpleInferencePipeline<
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
 void AutoParallelSimpleInferencePipeline<
-    Pipeline, PipelineParams, PipelineResult>::ProcessInstanceTasks(int instance_id) {
+    Pipeline, PipelineParams,
+    PipelineResult>::ProcessInstanceTasks(int instance_id) {
   auto &instance = instances_[instance_id];
 
   while (true) {
@@ -150,22 +155,23 @@ void AutoParallelSimpleInferencePipeline<
       std::lock_guard<std::mutex> lock(instance->queue_mutex);
       if (instance->task_queue.empty()) {
         instance->is_busy = false;
-        break; 
+        break;
       }
       task = std::move(instance->task_queue.front());
       instance->task_queue.pop();
-    } 
+    }
 
     if (task) {
-      task(); 
+      task();
     }
   }
 }
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
 template <typename PipelineInput>
-absl::Status AutoParallelSimpleInferencePipeline<
-    Pipeline, PipelineParams, PipelineResult>::PredictThread(const PipelineInput &input) {
+absl::Status
+AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::
+    PredictThread(const PipelineInput &input) {
   try {
     auto future = PredictAsync(input);
 
@@ -181,7 +187,8 @@ absl::Status AutoParallelSimpleInferencePipeline<
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
 absl::StatusOr<PipelineResult>
-AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::GetResult() {
+AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams,
+                                    PipelineResult>::GetResult() {
   std::lock_guard<std::mutex> lock(legacy_results_mutex_);
 
   if (legacy_results_.empty())
@@ -200,8 +207,8 @@ AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::G
 }
 
 template <typename Pipeline, typename PipelineParams, typename PipelineResult>
-AutoParallelSimpleInferencePipeline<
-    Pipeline, PipelineParams, PipelineResult>::~AutoParallelSimpleInferencePipeline() {
+AutoParallelSimpleInferencePipeline<Pipeline, PipelineParams, PipelineResult>::
+    ~AutoParallelSimpleInferencePipeline() {
   while (!legacy_results_.empty()) {
     try {
       legacy_results_.front().get();

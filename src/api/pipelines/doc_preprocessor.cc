@@ -29,7 +29,6 @@ DocPreprocessor::DocPreprocessor(const DocPreprocessorParams &params)
   CreatePipeline();
 };
 
-
 void DocPreprocessor::CreatePipeline() {
   pipeline_infer_ = std::unique_ptr<BasePipeline>(
       new DocPreprocessorPipeline(ToDocPreprocessorPipelineParams(params_)));
@@ -65,5 +64,6 @@ DocPreprocessorPipelineParams DocPreprocessor::ToDocPreprocessorPipelineParams(
   COPY_PARAMS(cpu_threads)
   COPY_PARAMS(thread_num)
   COPY_PARAMS(paddlex_config)
+  COPY_PARAMS(backend)
   return to;
 }

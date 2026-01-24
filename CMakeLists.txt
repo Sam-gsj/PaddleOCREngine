@@ -3,18 +3,27 @@ cmake_minimum_required(VERSION 3.14)
 
 set(DEMO_NAME "ppocr")
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
-option(USE_FREETYPE "Enable FreeType support" OFF)
+option(WITH_TensorRT   "Enable TensorRT support"   OFF)
+# ================= NCNN新增1：添加WITH_NCNN编译选项 =================
+option(WITH_NCNN       "Enable NCNN support (CPU only)"   OFF)
+# ==================================================================
+option(USE_FREETYPE    "Enable FreeType support" OFF)
 
-SET(PADDLE_LIB "/home/badguys/PaddleOCR/deploy/cpp_infer/paddle_inference" CACHE PATH "Location of libraries")
-SET(OPENCV_DIR "/home/badguys/PaddleOCR/deploy/cpp_infer/opencv-4.7.0/opencv4" CACHE PATH "Location of libraries")
+SET(PADDLE_LIB "/home/badguy/PaddleOCREngine/paddle_inference" CACHE PATH "Location of libraries")
+SET(OPENCV_DIR "dsfds" CACHE PATH "Location of libraries")
 SET(CUDA_LIB "" CACHE PATH "Location of libraries")
 SET(CUDNN_LIB "" CACHE PATH "Location of libraries")
+SET(TENSORRT_DIR "/usr/local/TensorRT" CACHE PATH "Location of TensorRT")
+SET(CUDA_INCLUDE "/usr/local/cuda-11.8/include" CACHE PATH "Location of TensorRT")
+# ================= NCNN新增2：添加NCNN_DIR缓存变量，指定NCNN库根目录 =================
+SET(NCNN_DIR "/usr/local/ncnn" CACHE PATH "Location of compiled NCNN library (CPU only)")
+# ====================================================================================
 
 macro(safe_set_static_flag)
     foreach(flag_var
@@ -38,7 +47,6 @@ if(NOT DEFINED OPENCV_DIR)
     message(FATAL_ERROR "please set OPENCV_DIR with -DOPENCV_DIR=/path/opencv")
 endif()
 
-
 if (WIN32)
   include_directories("${PADDLE_LIB}/paddle/include")
   link_directories("${PADDLE_LIB}/paddle/lib")
@@ -52,19 +60,96 @@ if (WIN32)
     add_definitions(-DUSE_FREETYPE)
   endif()  
 
+  # ================= NCNN新增3：Windows系统NCNN配置（与Linux对齐，纯CPU）=================
+  if(WITH_NCNN)
+    add_definitions(-DUSE_NCNN)
+    # 查找NCNN头文件
+    find_path(NCNN_INCLUDE_DIR ncnn/net.h
+        HINTS ${NCNN_DIR} ${NCNN_DIR}/include /usr/include /usr/include/ncnn
+    )
+    # 查找NCNN静态库（纯CPU编译的ncnn库，默认静态libncnn.a/libncnn.lib）
+    find_library(NCNN_LIBRARY ncnn
+        HINTS ${NCNN_DIR} ${NCNN_DIR}/lib ${NCNN_DIR}/build/lib /usr/lib /usr/lib/x86_64-linux-gnu
+    )
+    # 校验NCNN是否找到
+    if (NCNN_INCLUDE_DIR AND NCNN_LIBRARY)
+        message(STATUS "Found NCNN Header: ${NCNN_INCLUDE_DIR}")
+        message(STATUS "Found NCNN Lib: ${NCNN_LIBRARY}")
+        include_directories(${NCNN_INCLUDE_DIR})
+        set(DEPS ${DEPS} ${NCNN_LIBRARY})
+    else()
+        message(FATAL_ERROR "Could NOT find NCNN. Please set -DNCNN_DIR=/path/to/compiled/ncnn")
+    endif()
+  endif()
+  # ====================================================================================
+
 else ()
-  set(OpenCV_DIR "${OPENCV_DIR}/lib64/cmake/opencv4") 
+  set(OpenCV_DIR "/usr/local/opencv4/lib64/cmake/opencv4") 
   find_package(OpenCV REQUIRED)
   if(USE_FREETYPE)
     if(NOT "opencv_freetype" IN_LIST OpenCV_LIBS)
       message(FATAL_ERROR "OpenCV was not compiled with the freetype module (opencv_freetype) !")
     endif()
     add_definitions(-DUSE_FREETYPE)
+  endif()
+
+  # ================= TensorRT配置（原有逻辑，保持不变）=================
+  if(WITH_TensorRT)
+    add_definitions(-DUSE_TensorRT)
+    
+    # 查找头文件
+    include_directories("${CUDA_INCLUDE}")
+    find_path(TENSORRT_INCLUDE_DIR NvInfer.h
+        HINTS ${TENSORRT_DIR} ${TENSORRT_DIR}/include /usr/include /usr/include/x86_64-linux-gnu
+    )
+    
+    # 查找库文件 (nvinfer)
+    find_library(TENSORRT_LIBRARY nvinfer
+        HINTS ${TENSORRT_DIR} ${TENSORRT_DIR}/lib /usr/lib/x86_64-linux-gnu
+    )
+
+    if (TENSORRT_INCLUDE_DIR AND TENSORRT_LIBRARY)
+        message(STATUS "Found TensorRT Header: ${TENSORRT_INCLUDE_DIR}")
+        message(STATUS "Found TensorRT Lib: ${TENSORRT_LIBRARY}")
+        include_directories(${TENSORRT_INCLUDE_DIR})
+        # 将 TensorRT 库加入依赖列表
+        set(DEPS ${DEPS} ${TENSORRT_LIBRARY})
+    else()
+        message(FATAL_ERROR "Could NOT find TensorRT. Please set -DTENSORRT_DIR=/path/to/TensorRT")
+    endif()
   endif()  
+  # ====================================================================
+
+  # ================= NCNN新增4：Linux系统NCNN核心配置（纯CPU，重点）=================
+  if(WITH_NCNN)
+    add_definitions(-DUSE_NCNN)
+    # 查找NCNN核心头文件（ncnn/net.h），适配NCNN默认安装/自定义编译路径
+    find_path(NCNN_INCLUDE_DIR ncnn/net.h
+        HINTS ${NCNN_DIR} ${NCNN_DIR}/include /usr/local/ncnn/include /usr/include/ncnn
+    )
+    # 查找NCNN静态库（纯CPU编译的libncnn.a，NCNN默认编译为静态库，与你的需求匹配）
+    # 适配NCNN build/lib/ / install/lib/ / 系统库路径
+    find_library(NCNN_LIBRARY ncnn
+        HINTS ${NCNN_DIR} ${NCNN_DIR}/lib ${NCNN_DIR}/build/lib /usr/local/ncnn/lib /usr/lib/x86_64-linux-gnu
+    )
+    # 强制校验NCNN头文件和库是否找到，找不到直接抛错，提示配置NCNN_DIR
+    if (NCNN_INCLUDE_DIR AND NCNN_LIBRARY)
+        message(STATUS "Found NCNN Header: ${NCNN_INCLUDE_DIR}")
+        message(STATUS "Found NCNN Lib: ${NCNN_LIBRARY}")
+        # 添加NCNN头文件路径到工程
+        include_directories(${NCNN_INCLUDE_DIR})
+        # 将NCNN库添加到链接依赖DEPS中，后续统一链接
+        set(DEPS ${DEPS} ${NCNN_LIBRARY})
+    else()
+        message(FATAL_ERROR "Could NOT find NCNN (CPU only). Please set -DNCNN_DIR=/path/to/your/compiled/ncnn")
+    endif()
+  endif()
+  # ==================================================================================
 
   include_directories("${PADDLE_LIB}/paddle/include")
   link_directories("${PADDLE_LIB}/paddle/lib")
 endif ()
+
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 if (WIN32)
@@ -81,17 +166,14 @@ if (WIN32)
         add_definitions(-DSTATIC_LIB)
 	add_definitions(-DYAML_CPP_STATIC_DEFINE)
     endif()
-    message("cmake c debug flags " ${CMAKE_C_FLAGS_DEBUG})
-    message("cmake c release flags " ${CMAKE_C_FLAGS_RELEASE})
-    message("cmake cxx debug flags " ${CMAKE_CXX_FLAGS_DEBUG})
-    message("cmake cxx release flags " ${CMAKE_CXX_FLAGS_RELEASE})
 else()
     if(WITH_MKL)
         set(FLAG_OPENMP "-fopenmp")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ${FLAG_OPENMP} -std=c++11")
+    # 原有C++11改为C++14，与NCNN/Abseil兼容（NCNN编译建议C++14+）
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ${FLAG_OPENMP} -std=c++14")
     set(CMAKE_STATIC_LIBRARY_PREFIX "")
-    message("cmake cxx flags" ${CMAKE_CXX_FLAGS})
+    message("cmake cxx flags: " ${CMAKE_CXX_FLAGS})
 endif()
 
 if (WITH_GPU)
@@ -163,24 +245,24 @@ endif()
 # Note: libpaddle_inference_api.so/a must put before libpaddle_inference.so/a
 if(WITH_STATIC_LIB)
   if(WIN32)
-    set(DEPS
+    set(DEPS ${DEPS} 
         ${PADDLE_LIB}/paddle/lib/paddle_inference${CMAKE_STATIC_LIBRARY_SUFFIX})
   else()
-    set(DEPS
+    set(DEPS ${DEPS} 
         ${PADDLE_LIB}/paddle/lib/libpaddle_inference${CMAKE_STATIC_LIBRARY_SUFFIX})
   endif()
 else()
   if(WIN32)
-    set(DEPS
+    set(DEPS ${DEPS} 
         ${PADDLE_LIB}/paddle/lib/paddle_inference${CMAKE_SHARED_LIBRARY_SUFFIX})
   else()
-    set(DEPS
+    set(DEPS ${DEPS} 
         ${PADDLE_LIB}/paddle/lib/libpaddle_inference${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 endif(WITH_STATIC_LIB)
 
 if (NOT WIN32)
-    set(DEPS ${DEPS}
+    set(DEPS ${DEPS} 
         ${MATH_LIB} ${MKLDNN_LIB}
         glog gflags protobuf z xxhash
         )
@@ -219,7 +301,6 @@ if(WITH_GPU)
   endif()
 endif()
 
-
 if (NOT WIN32)
     set(EXTERNAL_LIB "-ldl -lrt -lgomp -lz -lm -lpthread")
     set(DEPS ${DEPS} ${EXTERNAL_LIB})
@@ -239,7 +320,6 @@ function(download_and_decompress url filename decompress_dir)
   endif()
 endfunction()
 
-
 set(PACKAGE_LIST abseil-cpp clipper_ver6.4.2 nlohmann)
 foreach(PKG ${PACKAGE_LIST})
     set(PKG_URL "https://paddle-model-ecology.bj.bcebos.com/paddlex/cpp/libs/${PKG}.tgz")
@@ -258,11 +338,15 @@ set(DEPS ${DEPS} polyclipping)
 
 if(UNIX)
   find_package(Iconv REQUIRED) 
+  # ================= NCNN新增5：链接Iconv库（NCNN纯CPU编译依赖Iconv，Linux必加）=================
+  set(DEPS ${DEPS} ${Iconv_LIBRARIES})
+  # ==============================================================================================
 endif()
 
 file(GLOB_RECURSE SRC_LIST "./src/*.cc")
 set(SRCS test.cpp )
 add_executable(${DEMO_NAME} ${SRCS} ${SRC_LIST} )
+# 最后链接所有 DEPS，其中已包含NCNN/TensorRT/OpenCV等所有依赖
 target_link_libraries(${DEMO_NAME} ${DEPS} )
 
 if (WIN32 AND WITH_MKL)

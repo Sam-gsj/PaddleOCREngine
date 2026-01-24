@@ -93,6 +93,7 @@ struct OCRPipelineParams {
   int cpu_threads = 8;
   int thread_num = 1;
   absl::optional<Utility::PaddleXConfigVariant> paddlex_config = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class _OCRPipeline : public BasePipeline {
@@ -102,12 +103,12 @@ public:
   _OCRPipeline() = delete;
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<std::string> &input) override{
-      return PredictImpl(input);
+  Predict(const std::vector<std::string> &input) override {
+    return PredictImpl(input);
   };
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<cv::Mat> &input) override{
+  Predict(const std::vector<cv::Mat> &input) override {
     return PredictImpl(input);
   };
 
@@ -150,9 +151,9 @@ private:
   TextDetParams text_det_params_;
 };
 
-class OCRPipeline
-    : public AutoParallelSimpleInferencePipeline<
-          _OCRPipeline, OCRPipelineParams, std::vector<std::unique_ptr<BaseCVResult>>> {
+class OCRPipeline : public AutoParallelSimpleInferencePipeline<
+                        _OCRPipeline, OCRPipelineParams,
+                        std::vector<std::unique_ptr<BaseCVResult>>> {
 public:
   OCRPipeline(const OCRPipelineParams &params)
       : AutoParallelSimpleInferencePipeline(params),
@@ -163,12 +164,12 @@ public:
   };
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<std::string> &input) override{
-      return PredictImpl(input);
+  Predict(const std::vector<std::string> &input) override {
+    return PredictImpl(input);
   };
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<cv::Mat> &input) override{
+  Predict(const std::vector<cv::Mat> &input) override {
     return PredictImpl(input);
   };
 

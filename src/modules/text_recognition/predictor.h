@@ -17,6 +17,7 @@
 #include "processors.h"
 #include "src/base/base_batch_sampler.h"
 #include "src/base/base_cv_result.h"
+#include "src/base/base_infer.h"
 #include "src/base/base_predictor.h"
 #include "src/common/processors.h"
 
@@ -41,6 +42,7 @@ struct TextRecPredictorParams {
   int cpu_threads = 8;
   int batch_size = 1;
   absl::optional<std::vector<int>> input_shape = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class TextRecPredictor : public BasePredictor {
@@ -63,7 +65,7 @@ public:
 private:
   std::unordered_map<std::string, std::unique_ptr<CTCLabelDecode>> post_op_;
   std::vector<TextRecPredictorResult> predictor_result_vec_;
-  std::unique_ptr<PaddleInfer> infer_ptr_;
+  std::unique_ptr<BaseInfer> infer_ptr_;
   TextRecPredictorParams params_;
   int input_index_ = 0;
 };

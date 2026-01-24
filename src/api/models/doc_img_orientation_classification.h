@@ -25,6 +25,7 @@ struct DocImgOrientationClassificationParams {
   int mkldnn_cache_capacity = 10;
   int cpu_threads = 8;
   int batch_size = 1;
+  std::string backend = "paddle";
 };
 
 class DocImgOrientationClassification {

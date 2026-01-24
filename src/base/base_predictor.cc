@@ -20,6 +20,9 @@
 
 #include "base_batch_sampler.h"
 #include "src/common/image_batch_sampler.h"
+#include "src/runtime/ncnn_infer.h"
+#include "src/runtime/paddle_infer.h"
+#include "src/runtime/tensorrt_infer.h"
 #include "src/utils/ilogger.h"
 #include "src/utils/pp_option.h"
 #include "src/utils/utility.h"
@@ -154,8 +157,19 @@ const PaddlePredictorOption &BasePredictor::PPOption() {
 
 void BasePredictor::SetBatchSize(int batch_size) { batch_size_ = batch_size; }
 
-std::unique_ptr<PaddleInfer> BasePredictor::CreateStaticInfer() {
-  return std::unique_ptr<PaddleInfer>(new PaddleInfer(
+std::unique_ptr<BaseInfer>
+BasePredictor::CreateStaticInfer(const std::string &backend) {
+  if (backend == "paddle") {
+    return std::unique_ptr<BaseInfer>(new PaddleInfer(
+        model_name_, model_dir_.value(), MODEL_FILE_PREFIX, PPOption()));
+  } else if (backend == "tensorrt") {
+    return std::unique_ptr<BaseInfer>(
+        new TensorRTInfer(model_name_, model_dir_.value(), PPOption()));
+  } else if (backend == "ncnn") {
+    return std::unique_ptr<BaseInfer>(
+        new NCNNInfer(model_name_, model_dir_.value(), PPOption()));
+  }
+  return std::unique_ptr<BaseInfer>(new PaddleInfer(
       model_name_, model_dir_.value(), MODEL_FILE_PREFIX, PPOption()));
 }
 

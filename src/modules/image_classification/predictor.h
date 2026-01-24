@@ -17,6 +17,7 @@
 #include "processors.h"
 #include "src/base/base_batch_sampler.h"
 #include "src/base/base_cv_result.h"
+#include "src/base/base_infer.h"
 #include "src/base/base_predictor.h"
 #include "src/common/processors.h"
 
@@ -29,6 +30,7 @@ struct ClasPredictorParams {
   int mkldnn_cache_capacity = 10;
   int cpu_threads = 8;
   int batch_size = 1;
+  std::string backend = "paddle";
 };
 
 struct ClasPredictorResult {
@@ -62,6 +64,6 @@ private:
   ClasPredictorParams params_;
   std::unordered_map<std::string, std::unique_ptr<Topk>> post_op_;
   std::vector<ClasPredictorResult> predictor_result_vec_;
-  std::unique_ptr<PaddleInfer> infer_ptr_;
+  std::unique_ptr<BaseInfer> infer_ptr_;
   int input_index_ = 0;
 };

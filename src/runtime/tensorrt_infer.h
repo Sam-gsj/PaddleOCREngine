@@ -14,58 +14,58 @@
 #ifdef USE_TensorRT
 #pragma once
 
-#include <vector>
-#include <string>
-#include <memory>
-#include <unordered_map>
-#include <opencv2/opencv.hpp>
-#include <NvInfer.h>
-#include <cuda_runtime_api.h>
 #include "src/base/base_infer.h"
 #include "src/utils/ilogger.h"
 #include "src/utils/pp_option.h"
+#include <NvInfer.h>
+#include <cuda_runtime_api.h>
+#include <memory>
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 class TRTLogger : public nvinfer1::ILogger {
 public:
-    void log(Severity severity, const char* msg) noexcept override;
+  void log(Severity severity, const char *msg) noexcept override;
 };
 
 class TensorRTInfer : public BaseInfer {
 public:
-    // 修改：构造函数直接接受 engine 文件路径
-    explicit TensorRTInfer(const std::string& engine_file_path,
-                           const PaddlePredictorOption& option);
-    ~TensorRTInfer();
+  explicit TensorRTInfer(const std::string &model_name,
+                         const std::string &model_dir,
+                         const PaddlePredictorOption &option);
+  ~TensorRTInfer() = default;
 
-    absl::StatusOr<std::vector<cv::Mat>>
-    Apply(const std::vector<cv::Mat>& x) override;
-
-private:
-    bool Init(const std::string& engine_path);
-    void GetBindings();
+  absl::StatusOr<std::vector<cv::Mat>>
+  Apply(const std::vector<cv::Mat> &x) override;
 
 private:
-    PaddlePredictorOption option_; // 保留 Option 以获取 DeviceId
+  bool Init(const std::string &engine_path);
+  void GetBindings();
 
-    std::unique_ptr<TRTLogger> logger_;
-    std::unique_ptr<nvinfer1::IRuntime> runtime_;
-    std::unique_ptr<nvinfer1::ICudaEngine> engine_;
-    std::unique_ptr<nvinfer1::IExecutionContext> context_;
+private:
+  PaddlePredictorOption option_;
 
-    cudaStream_t stream_ = nullptr;
+  std::unique_ptr<TRTLogger> logger_;
+  std::unique_ptr<nvinfer1::IRuntime> runtime_;
+  std::unique_ptr<nvinfer1::ICudaEngine> engine_;
+  std::unique_ptr<nvinfer1::IExecutionContext> context_;
 
-    struct TensorInfo {
-        std::string name;
-        int index; // TRT 8.x 核心: Binding Index
-        nvinfer1::DataType dtype;
-        nvinfer1::Dims dims; 
-        size_t size_bytes = 0;
-        void* device_buffer = nullptr; 
-        bool is_input = false;
-    };
+  cudaStream_t stream_ = nullptr;
 
-    std::vector<TensorInfo> tensors_;
-    std::vector<void*> bindings_ptrs_; // 用于 enqueueV2
+  struct TensorInfo {
+    std::string name;
+    int index;
+    nvinfer1::DataType dtype;
+    nvinfer1::Dims dims;
+    size_t size_bytes = 0;
+    void *device_buffer = nullptr;
+    bool is_input = false;
+  };
+
+  std::vector<TensorInfo> tensors_;
+  std::vector<void *> bindings_ptrs_;
 };
 
 #endif

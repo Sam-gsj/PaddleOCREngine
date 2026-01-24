@@ -25,6 +25,5 @@ public:
   BaseInfer() = default;
   virtual ~BaseInfer() = default;
   virtual absl::StatusOr<std::vector<cv::Mat>>
-  Apply(const std::vector<cv::Mat> &x) =0; 
-
+  Apply(const std::vector<cv::Mat> &x) = 0;
 };

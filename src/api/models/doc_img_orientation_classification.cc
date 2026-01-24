@@ -15,6 +15,7 @@
 #include "doc_img_orientation_classification.h"
 
 #include "src/utils/args.h"
+#include "src/utils/ilogger.h"
 #include "src/utils/yaml_config.h"
 
 #define COPY_PARAMS(field) to.field = from.field;
@@ -58,5 +59,6 @@ DocImgOrientationClassification::ToDocImgOrientationClassificationModelParams(
   COPY_PARAMS(mkldnn_cache_capacity)
   COPY_PARAMS(precision)
   COPY_PARAMS(cpu_threads)
+  COPY_PARAMS(backend)
   return to;
 }

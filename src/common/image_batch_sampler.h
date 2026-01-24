@@ -26,7 +26,7 @@
 class ImageBatchSampler : public BaseBatchSampler {
 public:
   explicit ImageBatchSampler(int batch_size = 1);
-  virtual ~ImageBatchSampler() {} 
+  virtual ~ImageBatchSampler() {}
 
   absl::StatusOr<std::vector<std::vector<cv::Mat>>>
   SampleFromString(const std::string &input) override;

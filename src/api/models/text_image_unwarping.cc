@@ -54,5 +54,6 @@ WarpPredictorParams TextImageUnwarping::ToTextImageUnwarpingModelParams(
   COPY_PARAMS(mkldnn_cache_capacity)
   COPY_PARAMS(precision)
   COPY_PARAMS(cpu_threads)
+  COPY_PARAMS(backend)
   return to;
 }

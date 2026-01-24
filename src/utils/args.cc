@@ -1,4 +1,5 @@
 // Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 badguy Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,3 +100,4 @@ DEFINE_string(thread_num, "1",
               "Number of threads used for pipeline instance inference on CPU.");
 DEFINE_string(paddlex_config, "",
               "Path to the PaddleX pipeline configuration file.");
+DEFINE_string(backend, "", "choose backend");

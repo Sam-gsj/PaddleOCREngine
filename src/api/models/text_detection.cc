@@ -15,6 +15,7 @@
 #include "text_detection.h"
 
 #include "src/utils/args.h"
+#include "src/utils/ilogger.h"
 #include "src/utils/yaml_config.h"
 
 #define COPY_PARAMS(field) to.field = from.field;
@@ -60,5 +61,6 @@ TextDetection::ToTextDetectionModelParams(const TextDetectionParams &from) {
   COPY_PARAMS(mkldnn_cache_capacity)
   COPY_PARAMS(precision)
   COPY_PARAMS(cpu_threads)
+  COPY_PARAMS(backend)
   return to;
 }

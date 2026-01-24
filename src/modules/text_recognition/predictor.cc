@@ -38,7 +38,7 @@ absl::Status TextRecPredictor::Build() {
   Register<ReadImage>("Read", "BGR"); //******
   Register<OCRReisizeNormImg>("ReisizeNorm", params_.input_shape);
   Register<ToBatchUniform>("ToBatch");
-  infer_ptr_ = CreateStaticInfer();
+  infer_ptr_ = CreateStaticInfer(params_.backend);
   const auto &post_params = config_.PostProcessOpInfo();
   post_op_["CTCLabelDecode"] = std::unique_ptr<CTCLabelDecode>(
       new CTCLabelDecode(YamlConfig::SmartParseVector(

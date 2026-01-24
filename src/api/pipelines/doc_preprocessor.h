@@ -32,6 +32,7 @@ struct DocPreprocessorParams {
   int cpu_threads = 8;
   int thread_num = 1;
   absl::optional<Utility::PaddleXConfigVariant> paddlex_config = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class DocPreprocessor {
@@ -39,16 +40,16 @@ public:
   DocPreprocessor(
       const DocPreprocessorParams &params = DocPreprocessorParams());
 
-
   template <typename T>
   std::vector<std::unique_ptr<BaseCVResult>> Predict(const T &input) {
-    std::vector<T> inputs = {input}; 
-    return Predict(inputs); 
+    std::vector<T> inputs = {input};
+    return Predict(inputs);
   }
 
   template <typename T>
-  std::vector<std::unique_ptr<BaseCVResult>> Predict(const std::vector<T> &input){
-     return pipeline_infer_->Predict(input);
+  std::vector<std::unique_ptr<BaseCVResult>>
+  Predict(const std::vector<T> &input) {
+    return pipeline_infer_->Predict(input);
   };
 
   void CreatePipeline();

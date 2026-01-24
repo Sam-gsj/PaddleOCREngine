@@ -17,6 +17,7 @@
 #include "processors.h"
 #include "src/base/base_batch_sampler.h"
 #include "src/base/base_cv_result.h"
+#include "src/base/base_infer.h"
 #include "src/base/base_predictor.h"
 #include "src/common/processors.h"
 
@@ -43,6 +44,7 @@ struct TextDetPredictorParams {
   absl::optional<float> box_thresh = absl::nullopt;
   absl::optional<float> unclip_ratio = absl::nullopt;
   absl::optional<std::vector<int>> input_shape = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class TextDetPredictor : public BasePredictor {
@@ -64,6 +66,6 @@ private:
   TextDetPredictorParams params_;
   std::unordered_map<std::string, std::unique_ptr<DBPostProcess>> post_op_;
   std::vector<TextDetPredictorResult> predictor_result_vec_;
-  std::unique_ptr<PaddleInfer> infer_ptr_;
+  std::unique_ptr<BaseInfer> infer_ptr_;
   int input_index_ = 0;
 };

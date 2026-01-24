@@ -54,6 +54,7 @@ struct DocPreprocessorPipelineParams {
   int cpu_threads = 8;
   int thread_num = 1;
   absl::optional<Utility::PaddleXConfigVariant> paddlex_config = absl::nullopt;
+  std::string backend = "paddle";
 };
 
 class _DocPreprocessorPipeline : public BasePipeline {
@@ -65,15 +66,14 @@ public:
   _DocPreprocessorPipeline() = delete;
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<std::string> &input) override{
-      return PredictImpl(input);
-  };
-
-  std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<cv::Mat> &input) override{
+  Predict(const std::vector<std::string> &input) override {
     return PredictImpl(input);
   };
 
+  std::vector<std::unique_ptr<BaseCVResult>>
+  Predict(const std::vector<cv::Mat> &input) override {
+    return PredictImpl(input);
+  };
 
   std::unordered_map<std::string, bool> GetModelSettings(
       absl::optional<bool> use_doc_orientation_classify = absl::nullopt,
@@ -117,19 +117,19 @@ public:
   };
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<std::string> &input) override{
-      return PredictImpl(input);
+  Predict(const std::vector<std::string> &input) override {
+    return PredictImpl(input);
   };
 
   std::vector<std::unique_ptr<BaseCVResult>>
-  Predict(const std::vector<cv::Mat> &input) override{
+  Predict(const std::vector<cv::Mat> &input) override {
     return PredictImpl(input);
   };
 
 private:
   template <typename T>
   std::vector<std::unique_ptr<BaseCVResult>> PredictImpl(const T &input);
-  
+
 private:
   int thread_num_;
   std::unique_ptr<BasePipeline> infer_;
